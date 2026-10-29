@@ -1,0 +1,1 @@
+{"version":3,"file":"CommunityRemoteApp.d.ts","sourceRoot":"","sources":["../../../../src/CommunityRemoteApp.tsx"],"names":[],"mappings":"AAAA,OAAO,KAAK,KAAK,MAAM,OAAO,CAAC;AAiD/B,MAAM,WAAW,uBAAuB;IACtC,cAAc,CAAC,EAAE,aAAa,GAAG,OAAO,CAAC;CAC1C;AAyKD,wBAAgB,kBAAkB,CAAC,EACjC,cAA8B,GAC/B,EAAE,uBAAuB,GAAG,KAAK,CAAC,GAAG,CAAC,OAAO,CA2/C7C;AAED,eAAe,kBAAkB,CAAC"}

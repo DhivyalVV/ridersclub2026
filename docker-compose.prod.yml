@@ -1,0 +1,124 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: ridersclub-postgres-prod
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-ridersclub}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-ridersclub_dev_password}
+      POSTGRES_DB: ${POSTGRES_DB:-ridersclub_db}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - ridersclub_pgdata_prod:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-ridersclub} -d ${POSTGRES_DB:-ridersclub_db}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build:
+      context: .
+      dockerfile: infrastructure/docker/Dockerfile.api
+    container_name: ridersclub-api-prod
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: 4000
+      DATABASE_URL: postgresql://${POSTGRES_USER:-ridersclub}:${POSTGRES_PASSWORD:-ridersclub_dev_password}@postgres:5432/${POSTGRES_DB:-ridersclub_db}?schema=public
+    ports:
+      - "4000:4000"
+
+  shell:
+    build:
+      context: .
+      dockerfile: infrastructure/docker/Dockerfile.web
+      args:
+        APP_NAME: shell
+    container_name: ridersclub-shell-prod
+    restart: unless-stopped
+    depends_on:
+      - api
+      - community
+      - rides
+      - help
+      - mechanics
+      - garage
+      - marketplace
+    ports:
+      - "5000:8080"
+
+  community:
+    build:
+      context: .
+      dockerfile: infrastructure/docker/Dockerfile.web
+      args:
+        APP_NAME: community
+    container_name: ridersclub-community-prod
+    restart: unless-stopped
+    ports:
+      - "5001:8080"
+
+  rides:
+    build:
+      context: .
+      dockerfile: infrastructure/docker/Dockerfile.web
+      args:
+        APP_NAME: rides
+    container_name: ridersclub-rides-prod
+    restart: unless-stopped
+    ports:
+      - "5002:8080"
+
+  help:
+    build:
+      context: .
+      dockerfile: infrastructure/docker/Dockerfile.web
+      args:
+        APP_NAME: help
+    container_name: ridersclub-help-prod
+    restart: unless-stopped
+    ports:
+      - "5003:8080"
+
+  mechanics:
+    build:
+      context: .
+      dockerfile: infrastructure/docker/Dockerfile.web
+      args:
+        APP_NAME: mechanics
+    container_name: ridersclub-mechanics-prod
+    restart: unless-stopped
+    ports:
+      - "5004:8080"
+
+  garage:
+    build:
+      context: .
+      dockerfile: infrastructure/docker/Dockerfile.web
+      args:
+        APP_NAME: garage
+    container_name: ridersclub-garage-prod
+    restart: unless-stopped
+    ports:
+      - "5005:8080"
+
+  marketplace:
+    build:
+      context: .
+      dockerfile: infrastructure/docker/Dockerfile.web
+      args:
+        APP_NAME: marketplace
+    container_name: ridersclub-marketplace-prod
+    restart: unless-stopped
+    ports:
+      - "5006:8080"
+
+volumes:
+  ridersclub_pgdata_prod:
+    name: ridersclub_pgdata_prod
+

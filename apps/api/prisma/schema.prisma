@@ -1,0 +1,580 @@
+// ============================================================================
+// RidersClub — Prisma Schema
+// Phase 5: User accounts, profiles, OTP challenges, sessions, and user blocks.
+// ============================================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  USER
+  MODERATOR
+  ADMIN
+}
+
+enum AccountStatus {
+  ACTIVE
+  SUSPENDED
+  DEACTIVATED
+}
+
+enum DirectMessagePrivacy {
+  EVERYONE
+  COMMUNITY_PEERS_ONLY
+  NONE
+}
+
+enum CommunityVisibility {
+  PUBLIC
+  PRIVATE
+}
+
+enum CommunityMembershipStatus {
+  APPROVED
+  PENDING
+}
+
+enum CommunityMemberRole {
+  FOUNDER
+  MODERATOR
+  MEMBER
+}
+
+enum RideStatus {
+  UPCOMING
+  COMPLETED
+  CANCELLED
+}
+
+enum HelpRequestStatus {
+  OPEN
+  ASSISTANCE_OFFERED
+  RESOLVED
+  CANCELLED
+}
+
+enum HelpCategory {
+  EMERGENCY_BREAKDOWN
+  FLAT_TIRE
+  OUT_OF_FUEL
+  BATTERY_JUMP
+  ACCIDENT_SUPPORT
+  OTHER
+}
+
+enum MechanicVerificationStatus {
+  UNVERIFIED
+  PENDING_REVIEW
+  VERIFIED
+  REJECTED
+}
+
+enum VehicleType {
+  MOTORCYCLE
+  CAR
+}
+
+enum ListingStatus {
+  DRAFT
+  ACTIVE
+  SOLD
+  WITHDRAWN
+}
+
+enum ModerationTargetType {
+  BLOG
+  COMMUNITY
+  USER
+  HELP_REQUEST
+  MECHANIC
+  LISTING
+}
+
+enum ReportStatus {
+  OPEN
+  ACTIONED
+  DISMISSED
+}
+
+model User {
+  id                   String               @id @default(uuid()) @db.Uuid
+  email                String?              @unique
+  phoneNumber          String?              @unique
+  googleSubjectId      String?              @unique
+  role                 UserRole             @default(USER)
+  accountStatus        AccountStatus        @default(ACTIVE)
+  allowDirectMessages  DirectMessagePrivacy @default(EVERYONE)
+  createdAt            DateTime             @default(now())
+  updatedAt            DateTime             @updatedAt
+
+  profile                  UserProfile?
+  sessions                 UserSession[]
+  blocksInitiated          UserBlock[]               @relation("BlocksInitiated")
+  blocksReceived           UserBlock[]               @relation("BlocksReceived")
+  blogs                    Blog[]
+  blogComments             BlogComment[]
+  blogReactions            BlogReaction[]
+  communitiesFounded       Community[]               @relation("CommunityFounder")
+  communityMemberships     CommunityMember[]
+  communityMessages        CommunityMessage[]
+  conversationParticipants ConversationParticipant[]
+  directMessagesSent       DirectMessage[]
+  ridesOrganized           Ride[]                    @relation("RideOrganizer")
+  rideParticipations       RideParticipant[]
+  helpRequestsCreated      HelpRequest[]             @relation("HelpRequester")
+  helpOffersMade           HelpRequestOffer[]
+  mechanicProfile          MechanicProfile?          @relation("MechanicOwner")
+  mechanicsVerified        MechanicProfile[]         @relation("MechanicVerifier")
+  garageVehicles           GarageVehicle[]           @relation("GarageOwner")
+  marketplaceListings      MarketplaceListing[]      @relation("MarketplaceSeller")
+  reportsCreated           ContentReport[]           @relation("ReportCreator")
+  reportsResolved          ContentReport[]           @relation("ReportResolver")
+  moderationAuditLogs      ModerationAuditLog[]      @relation("AuditActor")
+
+  @@index([role])
+  @@index([accountStatus])
+  @@map("users")
+}
+
+model UserProfile {
+  id          String   @id @default(uuid()) @db.Uuid
+  userId      String   @unique @db.Uuid
+  username    String   @unique
+  displayName String
+  bio         String?
+  avatarUrl   String?
+  city        String?
+  showPhone   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([city])
+  @@map("user_profiles")
+}
+
+model OtpChallenge {
+  id          String    @id @default(uuid()) @db.Uuid
+  phoneNumber String
+  codeHash    String
+  attempts    Int       @default(0)
+  expiresAt   DateTime
+  consumedAt  DateTime?
+  createdAt   DateTime  @default(now())
+
+  @@index([phoneNumber, createdAt])
+  @@map("otp_challenges")
+}
+
+model UserSession {
+  id           String    @id @default(uuid()) @db.Uuid
+  userId       String    @db.Uuid
+  tokenHash    String    @unique
+  userAgent    String?
+  ipAddress    String?
+  expiresAt    DateTime
+  revokedAt    DateTime?
+  createdAt    DateTime  @default(now())
+
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("user_sessions")
+}
+
+model UserBlock {
+  id          String   @id @default(uuid()) @db.Uuid
+  blockerId   String   @db.Uuid
+  blockedId   String   @db.Uuid
+  createdAt   DateTime @default(now())
+
+  blocker     User     @relation("BlocksInitiated", fields: [blockerId], references: [id], onDelete: Cascade)
+  blocked     User     @relation("BlocksReceived", fields: [blockedId], references: [id], onDelete: Cascade)
+
+  @@unique([blockerId, blockedId])
+  @@index([blockedId])
+  @@map("user_blocks")
+}
+
+model Blog {
+  id              String         @id @default(uuid()) @db.Uuid
+  authorId        String         @db.Uuid
+  slug            String         @unique
+  title           String
+  excerpt         String
+  content         String
+  tags            String[]
+  readTimeMinutes Int            @default(3)
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  author          User           @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  comments        BlogComment[]
+  reactions       BlogReaction[]
+
+  @@index([authorId])
+  @@index([createdAt])
+  @@map("blogs")
+}
+
+model BlogComment {
+  id        String   @id @default(uuid()) @db.Uuid
+  blogId    String   @db.Uuid
+  authorId  String   @db.Uuid
+  body      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  blog      Blog     @relation(fields: [blogId], references: [id], onDelete: Cascade)
+  author    User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@index([blogId, createdAt])
+  @@map("blog_comments")
+}
+
+model BlogReaction {
+  id        String   @id @default(uuid()) @db.Uuid
+  blogId    String   @db.Uuid
+  userId    String   @db.Uuid
+  createdAt DateTime @default(now())
+
+  blog      Blog     @relation(fields: [blogId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([blogId, userId])
+  @@map("blog_reactions")
+}
+
+model Community {
+  id          String              @id @default(uuid()) @db.Uuid
+  founderId   String              @db.Uuid
+  slug        String              @unique
+  name        String
+  description String
+  category    String
+  visibility  CommunityVisibility @default(PUBLIC)
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+
+  founder     User                @relation("CommunityFounder", fields: [founderId], references: [id], onDelete: Cascade)
+  members     CommunityMember[]
+  messages    CommunityMessage[]
+
+  @@index([visibility])
+  @@index([category])
+  @@map("communities")
+}
+
+model CommunityMember {
+  id          String                    @id @default(uuid()) @db.Uuid
+  communityId String                    @db.Uuid
+  userId      String                    @db.Uuid
+  role        CommunityMemberRole       @default(MEMBER)
+  status      CommunityMembershipStatus @default(APPROVED)
+  createdAt   DateTime                  @default(now())
+  updatedAt   DateTime                  @updatedAt
+
+  community   Community                 @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  user        User                      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([communityId, userId])
+  @@index([communityId, status])
+  @@index([userId, status])
+  @@map("community_members")
+}
+
+model CommunityMessage {
+  id          String    @id @default(uuid()) @db.Uuid
+  communityId String    @db.Uuid
+  senderId    String    @db.Uuid
+  body        String
+  createdAt   DateTime  @default(now())
+
+  community   Community @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  sender      User      @relation(fields: [senderId], references: [id], onDelete: Cascade)
+
+  @@index([communityId, createdAt])
+  @@map("community_messages")
+}
+
+model Conversation {
+  id                 String                    @id @default(uuid()) @db.Uuid
+  participantPairKey String                    @unique
+  contextLabel       String?
+  lastMessageAt      DateTime?
+  createdAt          DateTime                  @default(now())
+  updatedAt          DateTime                  @updatedAt
+
+  participants       ConversationParticipant[]
+  messages           DirectMessage[]
+
+  @@index([lastMessageAt])
+  @@map("conversations")
+}
+
+model ConversationParticipant {
+  id             String       @id @default(uuid()) @db.Uuid
+  conversationId String       @db.Uuid
+  userId         String       @db.Uuid
+  lastReadAt     DateTime?
+  createdAt      DateTime     @default(now())
+
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([conversationId, userId])
+  @@index([userId])
+  @@map("conversation_participants")
+}
+
+model DirectMessage {
+  id             String       @id @default(uuid()) @db.Uuid
+  conversationId String       @db.Uuid
+  senderId       String       @db.Uuid
+  body           String
+  contextLabel   String?
+  readAt         DateTime?
+  createdAt      DateTime     @default(now())
+
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender         User         @relation(fields: [senderId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId, createdAt])
+  @@map("direct_messages")
+}
+
+model Ride {
+  id                       String            @id @default(uuid()) @db.Uuid
+  organizerId              String            @db.Uuid
+  title                    String
+  description              String
+  startLocation            String
+  destination              String
+  departureAt              DateTime
+  capacity                 Int
+  estimatedDistanceKm      Int               @default(85)
+  estimatedDurationMinutes Int               @default(120)
+  status                   RideStatus        @default(UPCOMING)
+  createdAt                DateTime          @default(now())
+  updatedAt                DateTime          @updatedAt
+
+  organizer                User              @relation("RideOrganizer", fields: [organizerId], references: [id], onDelete: Cascade)
+  participants             RideParticipant[]
+
+  @@index([status, departureAt])
+  @@index([organizerId])
+  @@map("rides")
+}
+
+model RideParticipant {
+  id        String   @id @default(uuid()) @db.Uuid
+  rideId    String   @db.Uuid
+  userId    String   @db.Uuid
+  createdAt DateTime @default(now())
+
+  ride      Ride     @relation(fields: [rideId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([rideId, userId])
+  @@index([rideId])
+  @@index([userId])
+  @@map("ride_participants")
+}
+
+model HelpRequest {
+  id                     String             @id @default(uuid()) @db.Uuid
+  requesterId            String             @db.Uuid
+  category               HelpCategory
+  description            String
+  vehicleSummary         String?
+  status                 HelpRequestStatus  @default(OPEN)
+  locationConsentGranted Boolean            @default(false)
+  locationLabel          String?
+  latitude               Float?
+  longitude              Float?
+  resolvedAt             DateTime?
+  createdAt              DateTime           @default(now())
+  updatedAt              DateTime           @updatedAt
+
+  requester              User               @relation("HelpRequester", fields: [requesterId], references: [id], onDelete: Cascade)
+  offers                 HelpRequestOffer[]
+
+  @@index([status, createdAt])
+  @@index([requesterId])
+  @@index([category])
+  @@map("help_requests")
+}
+
+model HelpRequestOffer {
+  id            String      @id @default(uuid()) @db.Uuid
+  helpRequestId String      @db.Uuid
+  helperId      String      @db.Uuid
+  note          String?
+  createdAt     DateTime    @default(now())
+
+  helpRequest   HelpRequest @relation(fields: [helpRequestId], references: [id], onDelete: Cascade)
+  helper        User        @relation(fields: [helperId], references: [id], onDelete: Cascade)
+
+  @@unique([helpRequestId, helperId])
+  @@index([helpRequestId])
+  @@index([helperId])
+  @@map("help_request_offers")
+}
+
+model MechanicProfile {
+  id                 String                     @id @default(uuid()) @db.Uuid
+  ownerId            String                     @unique @db.Uuid
+  businessName       String
+  description        String
+  serviceCategories  String[]
+  address            String
+  city               String
+  contactPhone       String
+  contactPhonePublic Boolean                    @default(false)
+  verificationStatus MechanicVerificationStatus @default(PENDING_REVIEW)
+  verifiedAt         DateTime?
+  verifiedByAdminId  String?                    @db.Uuid
+  verificationNotes  String?
+  createdAt          DateTime                   @default(now())
+  updatedAt          DateTime                   @updatedAt
+
+  owner              User                       @relation("MechanicOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  verifiedByAdmin    User?                      @relation("MechanicVerifier", fields: [verifiedByAdminId], references: [id], onDelete: SetNull)
+
+  @@index([city])
+  @@index([verificationStatus])
+  @@map("mechanic_profiles")
+}
+
+model GarageVehicle {
+  id                    String                 @id @default(uuid()) @db.Uuid
+  ownerId               String                 @db.Uuid
+  type                  VehicleType
+  make                  String
+  model                 String
+  year                  Int
+  registrationLabel     String?
+  currentOdometerKm     Int                    @default(0)
+  nextReminderLabel     String?
+  nextServiceOdometerKm Int?
+  createdAt             DateTime               @default(now())
+  updatedAt             DateTime               @updatedAt
+
+  owner                 User                   @relation("GarageOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  serviceRecords        VehicleServiceRecord[]
+  notes                 VehicleNote[]
+
+  @@index([ownerId])
+  @@map("garage_vehicles")
+}
+
+model VehicleServiceRecord {
+  id           String        @id @default(uuid()) @db.Uuid
+  vehicleId    String        @db.Uuid
+  serviceDate  DateTime
+  odometerKm   Int
+  description  String
+  costInr      Int           @default(0)
+  workshopName String?
+  createdAt    DateTime      @default(now())
+
+  vehicle      GarageVehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+
+  @@index([vehicleId, serviceDate])
+  @@map("vehicle_service_records")
+}
+
+model VehicleNote {
+  id        String        @id @default(uuid()) @db.Uuid
+  vehicleId String        @db.Uuid
+  content   String
+  createdAt DateTime      @default(now())
+
+  vehicle   GarageVehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+
+  @@index([vehicleId])
+  @@map("vehicle_notes")
+}
+
+model MarketplaceListing {
+  id             String         @id @default(uuid()) @db.Uuid
+  sellerId       String         @db.Uuid
+  vehicleType    VehicleType
+  make           String
+  model          String
+  year           Int
+  odometerKm     Int            @default(0)
+  askingPriceInr Int
+  description    String
+  location       String
+  status         ListingStatus  @default(ACTIVE)
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  seller         User           @relation("MarketplaceSeller", fields: [sellerId], references: [id], onDelete: Cascade)
+  photos         ListingPhoto[]
+
+  @@index([status, vehicleType, askingPriceInr])
+  @@index([sellerId])
+  @@map("marketplace_listings")
+}
+
+model ListingPhoto {
+  id           String             @id @default(uuid()) @db.Uuid
+  listingId    String             @db.Uuid
+  url          String
+  mimeType     String
+  sizeBytes    Int
+  displayOrder Int                @default(0)
+  createdAt    DateTime           @default(now())
+
+  listing      MarketplaceListing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+
+  @@index([listingId, displayOrder])
+  @@map("listing_photos")
+}
+
+model ContentReport {
+  id              String               @id @default(uuid()) @db.Uuid
+  reporterId      String               @db.Uuid
+  targetType      ModerationTargetType
+  targetId        String
+  targetLabel     String
+  reason          String
+  status          ReportStatus         @default(OPEN)
+  resolutionNotes String?
+  resolvedById    String?              @db.Uuid
+  resolvedAt      DateTime?
+  createdAt       DateTime             @default(now())
+  updatedAt       DateTime             @updatedAt
+
+  reporter        User                 @relation("ReportCreator", fields: [reporterId], references: [id], onDelete: Cascade)
+  resolvedBy      User?                @relation("ReportResolver", fields: [resolvedById], references: [id], onDelete: SetNull)
+
+  @@index([status, createdAt])
+  @@index([targetType, targetId])
+  @@map("content_reports")
+}
+
+model ModerationAuditLog {
+  id         String               @id @default(uuid()) @db.Uuid
+  actorId    String               @db.Uuid
+  action     String
+  targetType ModerationTargetType
+  targetId   String
+  reason     String
+  createdAt  DateTime             @default(now())
+
+  actor      User                 @relation("AuditActor", fields: [actorId], references: [id], onDelete: Cascade)
+
+  @@index([actorId, createdAt])
+  @@index([targetType, targetId])
+  @@map("moderation_audit_logs")
+}

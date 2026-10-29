@@ -1,0 +1,71 @@
+name: RidersClub CI & Verification Pipeline
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify-monorepo:
+    name: Typecheck, Lint, Test & Build (11 Workspace Packages)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: ridersclub
+          POSTGRES_PASSWORD: ridersclub_dev_password
+          POSTGRES_DB: ridersclub_db
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      DATABASE_URL: postgresql://ridersclub:ridersclub_dev_password@localhost:5432/ridersclub_db?schema=public
+      JWT_ACCESS_SECRET: ci-access-secret-minimum-32-chars-ridersclub
+      JWT_REFRESH_SECRET: ci-refresh-secret-minimum-32-chars-ridersclub
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install pnpm 9.15.4
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.4
+
+      - name: Setup Node.js 20 with pnpm cache
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'pnpm'
+
+      - name: Install workspace dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate Prisma Client
+        run: pnpm db:generate
+
+      - name: Run TypeScript Typecheck across all packages
+        run: pnpm typecheck
+
+      - name: Run ESLint across all packages
+        run: pnpm lint
+
+      - name: Run Unit, NestJS Integration & Federated E2E Journey Tests
+        run: pnpm test
+
+      - name: Build Shared Packages, NestJS API, Shell & 6 Federated Remotes
+        run: pnpm build
+

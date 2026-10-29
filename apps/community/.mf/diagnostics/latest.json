@@ -1,0 +1,10 @@
+{
+  "latestErrorEvent": {
+    "code": "TYPE-001",
+    "message": "Failed to generate type declaration. Execute the below cmd to reproduce and fix the error. #TYPE-001\nargs: {\"cmd\":\"C:\\\\Users\\\\dhivy\\\\AppData\\\\Roaming\\\\fnm\\\\aliases\\\\default\\\\node.exe D:\\\\Projects\\\\Worldonwheels\\\\2026\\\\ridersclub\\\\node_modules\\\\.pnpm\\\\typescript@5.9.3\\\\node_modules\\\\typescript\\\\bin\\\\tsc --project D:\\\\Projects\\\\Worldonwheels\\\\2026\\\\ridersclub\\\\apps\\\\community\\\\node_modules\\\\.federation\\\\tsconfig.cb95707c9f9eaca5a85f03594a7622ac.json\"}\nView the docs to see how to solve: https://module-federation.io/guide/troubleshooting/type#type-001",
+    "args": {
+      "cmd": "C:\\Users\\dhivy\\AppData\\Roaming\\fnm\\aliases\\default\\node.exe D:\\Projects\\Worldonwheels\\2026\\ridersclub\\node_modules\\.pnpm\\typescript@5.9.3\\node_modules\\typescript\\bin\\tsc --project D:\\Projects\\Worldonwheels\\2026\\ridersclub\\apps\\community\\node_modules\\.federation\\tsconfig.cb95707c9f9eaca5a85f03594a7622ac.json"
+    },
+    "timestamp": 1792679055975
+  }
+}

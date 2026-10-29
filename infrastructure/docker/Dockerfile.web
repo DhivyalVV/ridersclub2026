@@ -1,0 +1,35 @@
+# ==============================================================================
+# Stage 1: Builder — Build @ridersclub/types, @ridersclub/ui, and target MFE app
+# Usage: docker build --build-arg APP_NAME=shell -f infrastructure/docker/Dockerfile.web .
+# ==============================================================================
+FROM node:20-alpine AS builder
+
+ARG APP_NAME=shell
+WORKDIR /workspace
+RUN corepack enable && corepack prepare pnpm@9.15.4 --activate
+
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml turbo.json tsconfig.base.json ./
+COPY packages ./packages
+COPY apps ./apps
+
+RUN pnpm install --frozen-lockfile
+RUN pnpm --filter @ridersclub/types build && \
+    pnpm --filter @ridersclub/ui build && \
+    pnpm --filter "@ridersclub/${APP_NAME}" build
+
+# ==============================================================================
+# Stage 2: Production Nginx Static + Module Federation Host/Remote Server
+# ==============================================================================
+FROM nginx:1.27-alpine AS runner
+
+ARG APP_NAME=shell
+COPY infrastructure/docker/nginx-mfe.conf /etc/nginx/conf.d/default.conf
+COPY --from=builder /workspace/apps/${APP_NAME}/dist /usr/share/nginx/html
+
+EXPOSE 8080
+
+HEALTHCHECK --interval=15s --timeout=5s --start-period=5s --retries=3 \
+  CMD wget --no-verbose --tries=1 --spider http://localhost:8080/ || exit 1
+
+CMD ["nginx", "-g", "daemon off;"]
+
