@@ -1,0 +1,136 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: ridersclub-postgres-staging
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-ridersclub_staging}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-ridersclub_staging_password}
+      POSTGRES_DB: ${POSTGRES_DB:-ridersclub_staging_db}
+    ports:
+      - "5433:5432"
+    volumes:
+      - ridersclub_pgdata_staging:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-ridersclub_staging} -d ${POSTGRES_DB:-ridersclub_staging_db}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build:
+      context: .
+      dockerfile: infrastructure/docker/Dockerfile.api
+    container_name: ridersclub-api-staging
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      NODE_ENV: development
+      PORT: 4000
+      DATABASE_URL: postgresql://${POSTGRES_USER:-ridersclub_staging}:${POSTGRES_PASSWORD:-ridersclub_staging_password}@postgres:5432/${POSTGRES_DB:-ridersclub_staging_db}?schema=public
+    ports:
+      - "4100:4000"
+
+  shell:
+    build:
+      context: .
+      dockerfile: infrastructure/docker/Dockerfile.web
+      args:
+        APP_NAME: shell
+        VITE_API_BASE_URL: ${PUBLIC_HOST:-http://localhost}:4100/api/v1
+        VITE_COMMUNITY_REMOTE_URL: ${PUBLIC_HOST:-http://localhost}:5101/remoteEntry.js
+        VITE_RIDES_REMOTE_URL: ${PUBLIC_HOST:-http://localhost}:5102/remoteEntry.js
+        VITE_HELP_REMOTE_URL: ${PUBLIC_HOST:-http://localhost}:5103/remoteEntry.js
+        VITE_MECHANICS_REMOTE_URL: ${PUBLIC_HOST:-http://localhost}:5104/remoteEntry.js
+        VITE_GARAGE_REMOTE_URL: ${PUBLIC_HOST:-http://localhost}:5105/remoteEntry.js
+        VITE_MARKETPLACE_REMOTE_URL: ${PUBLIC_HOST:-http://localhost}:5106/remoteEntry.js
+    container_name: ridersclub-shell-staging
+    restart: unless-stopped
+    depends_on:
+      - api
+      - community
+      - rides
+      - help
+      - mechanics
+      - garage
+      - marketplace
+    ports:
+      - "5100:8080"
+
+  community:
+    build:
+      context: .
+      dockerfile: infrastructure/docker/Dockerfile.web
+      args:
+        APP_NAME: community
+        VITE_API_BASE_URL: ${PUBLIC_HOST:-http://localhost}:4100/api/v1
+    container_name: ridersclub-community-staging
+    restart: unless-stopped
+    ports:
+      - "5101:8080"
+
+  rides:
+    build:
+      context: .
+      dockerfile: infrastructure/docker/Dockerfile.web
+      args:
+        APP_NAME: rides
+        VITE_API_BASE_URL: ${PUBLIC_HOST:-http://localhost}:4100/api/v1
+    container_name: ridersclub-rides-staging
+    restart: unless-stopped
+    ports:
+      - "5102:8080"
+
+  help:
+    build:
+      context: .
+      dockerfile: infrastructure/docker/Dockerfile.web
+      args:
+        APP_NAME: help
+        VITE_API_BASE_URL: ${PUBLIC_HOST:-http://localhost}:4100/api/v1
+    container_name: ridersclub-help-staging
+    restart: unless-stopped
+    ports:
+      - "5103:8080"
+
+  mechanics:
+    build:
+      context: .
+      dockerfile: infrastructure/docker/Dockerfile.web
+      args:
+        APP_NAME: mechanics
+        VITE_API_BASE_URL: ${PUBLIC_HOST:-http://localhost}:4100/api/v1
+    container_name: ridersclub-mechanics-staging
+    restart: unless-stopped
+    ports:
+      - "5104:8080"
+
+  garage:
+    build:
+      context: .
+      dockerfile: infrastructure/docker/Dockerfile.web
+      args:
+        APP_NAME: garage
+        VITE_API_BASE_URL: ${PUBLIC_HOST:-http://localhost}:4100/api/v1
+    container_name: ridersclub-garage-staging
+    restart: unless-stopped
+    ports:
+      - "5105:8080"
+
+  marketplace:
+    build:
+      context: .
+      dockerfile: infrastructure/docker/Dockerfile.web
+      args:
+        APP_NAME: marketplace
+        VITE_API_BASE_URL: ${PUBLIC_HOST:-http://localhost}:4100/api/v1
+    container_name: ridersclub-marketplace-staging
+    restart: unless-stopped
+    ports:
+      - "5106:8080"
+
+volumes:
+  ridersclub_pgdata_staging:
+

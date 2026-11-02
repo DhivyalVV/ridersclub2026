@@ -8,17 +8,24 @@ afterEach(() => {
 });
 
 describe('CommunityRemoteApp federated remote (Phase 6 Communities, Chat & Blogs)', () => {
-  it('renders communities by default and switches to Rider Blogs tab', () => {
-    render(<CommunityRemoteApp />);
+  it('renders Communities and Rider Blogs as separate dedicated views without an internal tab switcher', () => {
+    const { unmount } = render(<CommunityRemoteApp initialSection="communities" />);
 
+    expect(screen.getByText('Riding Communities')).toBeTruthy();
     expect(screen.getByText('Western Ghats ADV Tourers')).toBeTruthy();
+    expect(screen.queryByRole('tab', { name: /Rider Blogs/i })).toBeNull();
+    expect(screen.queryByRole('button', { name: /Write Blog/i })).toBeNull();
 
-    const blogsTab = screen.getByRole('tab', { name: /Rider Blogs/i });
-    fireEvent.click(blogsTab);
+    unmount();
 
+    render(<CommunityRemoteApp initialSection="blogs" />);
+
+    expect(screen.getByText('Rider Blogs & Technical Guides')).toBeTruthy();
     expect(
       screen.getByText('High-Altitude Braking & Clutch Care Before a Spiti Circuit'),
     ).toBeTruthy();
+    expect(screen.queryByRole('tab', { name: /Communities/i })).toBeNull();
+    expect(screen.queryByRole('button', { name: /New Community/i })).toBeNull();
   });
 
   it('dispatches global 1:1 chat event when clicking Message on a community founder', () => {

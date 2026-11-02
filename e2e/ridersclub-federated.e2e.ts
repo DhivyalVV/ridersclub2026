@@ -13,7 +13,11 @@ export interface E2EPage {
 export async function verifyFederatedShellAndRemotesJourney(page: E2EPage): Promise<void> {
   // 1. Load Shell Host & Community Remote (:5001)
   await page.goto('/communities');
-  await page.locator('text=Communities & Rider Blogs').waitFor();
+  await page.locator('text=Riding Communities').waitFor();
+
+  // 1b. Load Rider Blogs view (:5001)
+  await page.goto('/blogs');
+  await page.locator('text=Rider Blogs & Technical Guides').waitFor();
 
   // 2. Navigate to Group Rides (:5002)
   await page.goto('/rides');

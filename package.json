@@ -10,6 +10,8 @@
   },
   "scripts": {
     "build": "turbo run build --concurrency=2",
+    "start:prod": "turbo run preview",
+    "preview": "turbo run preview",
     "dev": "turbo run dev",
     "dev:poc": "turbo run dev --filter=@ridersclub/api --filter=@ridersclub/community --filter=@ridersclub/shell",
     "dev:shell": "pnpm --filter @ridersclub/shell dev",

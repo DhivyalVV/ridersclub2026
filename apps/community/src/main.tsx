@@ -8,11 +8,15 @@ if (!rootElement) {
   throw new Error('Failed to find #root element in apps/community');
 }
 
+const initialSection = window.location.pathname.startsWith('/blogs')
+  ? 'blogs'
+  : 'communities';
+
 createRoot(rootElement).render(
   <React.StrictMode>
     <div className="min-h-screen bg-background p-4 sm:p-8">
       <div className="mx-auto max-w-6xl">
-        <CommunityRemoteApp />
+        <CommunityRemoteApp initialSection={initialSection} />
       </div>
     </div>
   </React.StrictMode>,

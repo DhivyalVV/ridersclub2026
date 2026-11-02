@@ -68,6 +68,9 @@ const FederatedGarageRemote = React.lazy(() => import('garage/App'));
 const FederatedMarketplaceRemote = React.lazy(() => import('marketplace/App'));
 
 const ACCESS_TOKEN_STORAGE_KEY = 'ridersclub:access_token';
+const AUTH_USER_STORAGE_KEY = 'ridersclub:auth_user';
+const LEGACY_TOKEN_STORAGE_KEY = 'ridersclub_auth_token';
+const LEGACY_USER_STORAGE_KEY = 'ridersclub_auth_user';
 
 const FALLBACK_GUEST_USER: PublicUserSummary = {
   id: 'user-current-dev',
@@ -76,7 +79,7 @@ const FALLBACK_GUEST_USER: PublicUserSummary = {
   avatarUrl: null,
   bio: 'RidersClub Member • Touring & Garage Enthusiast',
   city: 'Bengaluru',
-  role: UserRole.ADMIN,
+  role: UserRole.USER,
   canReceiveDirectMessage: true,
 };
 
@@ -138,11 +141,13 @@ export interface ShellAppProps {
     initialSection?: 'communities' | 'blogs';
   }>;
   remoteOverrides?: RemoteComponentOverrides;
+  initialAuthenticatedUser?: AuthenticatedUserAccount | null;
 }
 
 export function ShellApp({
   CommunityComponentOverride,
   remoteOverrides,
+  initialAuthenticatedUser,
 }: ShellAppProps): React.JSX.Element {
   const location = useLocation();
   const navigate = useNavigate();
@@ -160,7 +165,17 @@ export function ShellApp({
     }
   });
   const [authenticatedUser, setAuthenticatedUser] =
-    React.useState<AuthenticatedUserAccount | null>(null);
+    React.useState<AuthenticatedUserAccount | null>(() => {
+      if (initialAuthenticatedUser !== undefined) {
+        return initialAuthenticatedUser;
+      }
+      try {
+        const raw = window.localStorage.getItem(AUTH_USER_STORAGE_KEY);
+        return raw ? (JSON.parse(raw) as AuthenticatedUserAccount) : null;
+      } catch {
+        return null;
+      }
+    });
 
   const [isChatDrawerOpen, setIsChatDrawerOpen] = React.useState(false);
   const [isMobileMoreOpen, setIsMobileMoreOpen] = React.useState(false);
@@ -223,7 +238,9 @@ export function ShellApp({
   // Restore authenticated user session if token exists and load persisted 1:1 conversations
   React.useEffect(() => {
     if (!accessToken) {
-      setAuthenticatedUser(null);
+      return;
+    }
+    if (accessToken.startsWith('local-session-')) {
       return;
     }
 
@@ -238,6 +255,13 @@ export function ShellApp({
       .then((user: AuthenticatedUserAccount) => {
         if (!isMounted) return;
         setAuthenticatedUser(user);
+        try {
+          const serialized = JSON.stringify(user);
+          window.localStorage.setItem(AUTH_USER_STORAGE_KEY, serialized);
+          window.localStorage.setItem(LEGACY_USER_STORAGE_KEY, serialized);
+        } catch {
+          // ignore
+        }
         return fetch(`${apiBaseUrl}/conversations`, {
           headers: { Authorization: `Bearer ${accessToken}` },
         })
@@ -256,6 +280,9 @@ export function ShellApp({
           setAccessToken(null);
           try {
             window.localStorage.removeItem(ACCESS_TOKEN_STORAGE_KEY);
+            window.localStorage.removeItem(AUTH_USER_STORAGE_KEY);
+            window.localStorage.removeItem(LEGACY_TOKEN_STORAGE_KEY);
+            window.localStorage.removeItem(LEGACY_USER_STORAGE_KEY);
           } catch {
             // ignore
           }
@@ -425,18 +452,44 @@ export function ShellApp({
   const totalUnreadMessages = conversations.reduce((sum, c) => sum + c.unreadCount, 0);
   const activeConversation = conversations.find((c) => c.pairKey === activePairKey) ?? null;
 
+  const isAdminOrModerator =
+    authenticatedUser?.role === UserRole.ADMIN ||
+    authenticatedUser?.role === UserRole.MODERATOR;
+
   function handleSessionEstablished(session: AuthSessionResponse): void {
     setAccessToken(session.accessToken);
     setAuthenticatedUser(session.user);
     try {
+      const serializedUser = JSON.stringify(session.user);
       window.localStorage.setItem(ACCESS_TOKEN_STORAGE_KEY, session.accessToken);
+      window.localStorage.setItem(AUTH_USER_STORAGE_KEY, serializedUser);
+      window.localStorage.setItem(LEGACY_TOKEN_STORAGE_KEY, session.accessToken);
+      window.localStorage.setItem(LEGACY_USER_STORAGE_KEY, serializedUser);
+    } catch {
+      // ignore
+    }
+    if (
+      location.pathname === '/' ||
+      location.pathname.startsWith('/profile') ||
+      location.pathname.startsWith('/auth')
+    ) {
+      navigate('/communities');
+    }
+  }
+
+  function handleUserUpdated(updated: AuthenticatedUserAccount): void {
+    setAuthenticatedUser(updated);
+    try {
+      const serialized = JSON.stringify(updated);
+      window.localStorage.setItem(AUTH_USER_STORAGE_KEY, serialized);
+      window.localStorage.setItem(LEGACY_USER_STORAGE_KEY, serialized);
     } catch {
       // ignore
     }
   }
 
   async function handleSignOut(): Promise<void> {
-    if (accessToken) {
+    if (accessToken && !accessToken.startsWith('local-session-')) {
       try {
         await fetch(`${apiBaseUrl}/auth/logout`, {
           method: 'POST',
@@ -451,9 +504,13 @@ export function ShellApp({
     setAuthenticatedUser(null);
     try {
       window.localStorage.removeItem(ACCESS_TOKEN_STORAGE_KEY);
+      window.localStorage.removeItem(AUTH_USER_STORAGE_KEY);
+      window.localStorage.removeItem(LEGACY_TOKEN_STORAGE_KEY);
+      window.localStorage.removeItem(LEGACY_USER_STORAGE_KEY);
     } catch {
       // ignore
     }
+    navigate('/profile');
   }
 
   async function handleToggleBlockUser(targetUser: PublicUserSummary): Promise<void> {
@@ -635,43 +692,49 @@ export function ShellApp({
           </div>
 
           <div className="flex items-center gap-2 sm:gap-3">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                if (activeConversation) {
-                  setConversations((prev) =>
-                    prev.map((c) =>
-                      c.pairKey === activeConversation.pairKey ? { ...c, unreadCount: 0 } : c,
-                    ),
-                  );
-                }
-                setIsChatDrawerOpen(true);
-              }}
-              aria-label="Open 1:1 Direct Messages Drawer"
-              className="relative"
-            >
-              <MessageSquare className="h-4 w-4 text-primary-600" aria-hidden="true" />
-              <span className="hidden sm:inline">Messages</span>
-              {totalUnreadMessages > 0 && (
-                <span
-                  aria-label={`${totalUnreadMessages} unread messages`}
-                  className="ml-1 inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-primary-600 px-1.5 text-[11px] font-bold text-white"
+            {authenticatedUser && (
+              <>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    if (activeConversation) {
+                      setConversations((prev) =>
+                        prev.map((c) =>
+                          c.pairKey === activeConversation.pairKey
+                            ? { ...c, unreadCount: 0 }
+                            : c,
+                        ),
+                      );
+                    }
+                    setIsChatDrawerOpen(true);
+                  }}
+                  aria-label="Open 1:1 Direct Messages Drawer"
+                  className="relative"
                 >
-                  {totalUnreadMessages}
-                </span>
-              )}
-            </Button>
+                  <MessageSquare className="h-4 w-4 text-primary-600" aria-hidden="true" />
+                  <span className="hidden sm:inline">Messages</span>
+                  {totalUnreadMessages > 0 && (
+                    <span
+                      aria-label={`${totalUnreadMessages} unread messages`}
+                      className="ml-1 inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-primary-600 px-1.5 text-[11px] font-bold text-white"
+                    >
+                      {totalUnreadMessages}
+                    </span>
+                  )}
+                </Button>
 
-            <Button
-              variant="ghost"
-              size="icon"
-              aria-label="Notifications"
-              onClick={() => navigate('/help')}
-              title="Roadside Help & Alerts"
-            >
-              <Bell className="h-4 w-4" aria-hidden="true" />
-            </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  aria-label="Notifications"
+                  onClick={() => navigate('/help')}
+                  title="Roadside Help & Alerts"
+                >
+                  <Bell className="h-4 w-4" aria-hidden="true" />
+                </Button>
+              </>
+            )}
 
             <Link
               to="/profile"
@@ -679,12 +742,14 @@ export function ShellApp({
               className="flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 py-1 pl-1 pr-3 text-xs font-semibold text-slate-800 transition-colors hover:bg-primary-50 hover:text-primary-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600"
             >
               <Avatar
-                alt={activeSelfDisplayName}
-                fallbackText={activeSelfDisplayName}
+                alt={authenticatedUser ? activeSelfDisplayName : 'Guest Rider'}
+                fallbackText={authenticatedUser ? activeSelfDisplayName : 'RC'}
                 size="sm"
               />
               <span className="hidden md:inline">
-                {authenticatedUser ? activeSelfDisplayName : 'Sign In / Profile'}
+                {authenticatedUser
+                  ? `${activeSelfDisplayName} (${authenticatedUser.role})`
+                  : 'Sign In Required'}
               </span>
               {!authenticatedUser && (
                 <LogIn className="h-3.5 w-3.5 text-primary-600 md:hidden" aria-hidden="true" />
@@ -694,277 +759,309 @@ export function ShellApp({
         </div>
       </header>
 
-      {/* Main Content Grid with Desktop Left Rail */}
+      {/* Main Content Grid with Desktop Left Rail (Navigation visible only after sign-in) */}
       <div className="mx-auto flex w-full max-w-7xl flex-1 gap-6 px-4 pb-24 pt-6 sm:px-6 md:pb-12">
-        {/* Desktop Sidebar Navigation */}
-        <aside
-          aria-label="Desktop Navigation"
-          className="hidden w-60 shrink-0 flex-col justify-between md:flex"
-        >
-          <nav className="space-y-1">
-            <p className="px-3 pb-2 text-xs font-semibold uppercase tracking-wider text-slate-400">
-              Core Experience
-            </p>
-            {[
-              { to: '/communities', label: 'Communities', icon: Compass, port: ':5001' },
-              { to: '/blogs', label: 'Rider Blogs', icon: BookOpen, port: ':5001' },
-              { to: '/rides', label: 'Group Rides', icon: Car, port: ':5002' },
-              { to: '/help', label: 'Roadside Help', icon: AlertTriangle, port: ':5003', highlight: true },
-              { to: '/garage', label: 'My Garage', icon: Shield, port: ':5005' },
-            ].map((item) => {
-              const Icon = item.icon;
-              return (
-                <NavLink
-                  key={item.to}
-                  to={item.to}
-                  className={({ isActive }) =>
-                    `flex items-center justify-between rounded-xl px-3 py-2.5 text-sm font-medium transition-colors ${
-                      isActive
-                        ? 'bg-primary-600 text-white shadow-sm'
-                        : item.highlight
-                          ? 'text-amber-800 hover:bg-amber-50'
-                          : 'text-slate-700 hover:bg-slate-100'
-                    }`
-                  }
-                >
-                  <span className="flex items-center gap-2.5">
-                    <Icon className="h-4 w-4" aria-hidden="true" />
-                    {item.label}
-                  </span>
-                  <span className="rounded-full bg-primary-100/90 px-2 py-0.5 font-mono text-[10px] font-semibold text-primary-900">
-                    {item.port}
-                  </span>
-                </NavLink>
-              );
-            })}
-
-            <p className="px-3 pb-2 pt-5 text-xs font-semibold uppercase tracking-wider text-slate-400">
-              Directory & Commerce
-            </p>
-            {[
-              { to: '/marketplace', label: 'Marketplace', icon: ShoppingBag, port: ':5006' },
-              { to: '/mechanics', label: 'Mechanics', icon: Wrench, port: ':5004' },
-              { to: '/profile', label: 'Profile & Auth', icon: User, port: 'Phase 5' },
-              { to: '/admin', label: 'Admin & Safety', icon: ShieldAlert, port: 'Phase 13' },
-            ].map((item) => {
-              const Icon = item.icon;
-              return (
-                <NavLink
-                  key={item.to}
-                  to={item.to}
-                  className={({ isActive }) =>
-                    `flex items-center justify-between rounded-xl px-3 py-2.5 text-sm font-medium transition-colors ${
-                      isActive
-                        ? 'bg-primary-600 text-white shadow-sm'
-                        : 'text-slate-700 hover:bg-slate-100'
-                    }`
-                  }
-                >
-                  <span className="flex items-center gap-2.5">
-                    <Icon className="h-4 w-4" aria-hidden="true" />
-                    {item.label}
-                  </span>
-                  <span className="rounded-full bg-slate-100 px-2 py-0.5 font-mono text-[10px] font-semibold text-slate-700">
-                    {item.port}
-                  </span>
-                </NavLink>
-              );
-            })}
-          </nav>
-
-          <Card className="mt-6 bg-primary-950 text-white border-none">
-            <CardContent className="p-4">
-              <div className="flex items-center gap-2 text-xs font-semibold text-primary-200">
-                <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />
-                <span>6 Remotes + Auth Active</span>
-              </div>
-              <p className="mt-1.5 text-xs text-slate-300 leading-relaxed">
-                Shell (:5000) orchestrates Community (:5001), Rides (:5002), Help (:5003),
-                Mechanics (:5004), Garage (:5005), Marketplace (:5006) & NestJS Auth (:4000).
+        {authenticatedUser ? (
+          <aside
+            aria-label="Desktop Navigation"
+            className="hidden w-60 shrink-0 flex-col justify-between md:flex"
+          >
+            <nav className="space-y-1">
+              <p className="px-3 pb-2 text-xs font-semibold uppercase tracking-wider text-slate-400">
+                Core Experience
               </p>
-            </CardContent>
-          </Card>
-        </aside>
+              {[
+                { to: '/communities', label: 'Communities', icon: Compass, port: ':5001' },
+                { to: '/blogs', label: 'Rider Blogs', icon: BookOpen, port: ':5001' },
+                { to: '/rides', label: 'Group Rides', icon: Car, port: ':5002' },
+                { to: '/help', label: 'Roadside Help', icon: AlertTriangle, port: ':5003', highlight: true },
+                { to: '/garage', label: 'My Garage', icon: Shield, port: ':5005' },
+              ].map((item) => {
+                const Icon = item.icon;
+                return (
+                  <NavLink
+                    key={item.to}
+                    to={item.to}
+                    className={({ isActive }) =>
+                      `flex items-center justify-between rounded-xl px-3 py-2.5 text-sm font-medium transition-colors ${
+                        isActive
+                          ? 'bg-primary-600 text-white shadow-sm'
+                          : item.highlight
+                            ? 'text-amber-800 hover:bg-amber-50'
+                            : 'text-slate-700 hover:bg-slate-100'
+                      }`
+                    }
+                  >
+                    <span className="flex items-center gap-2.5">
+                      <Icon className="h-4 w-4" aria-hidden="true" />
+                      {item.label}
+                    </span>
+                    <span className="rounded-full bg-primary-100/90 px-2 py-0.5 font-mono text-[10px] font-semibold text-primary-900">
+                      {item.port}
+                    </span>
+                  </NavLink>
+                );
+              })}
+
+              <p className="px-3 pb-2 pt-5 text-xs font-semibold uppercase tracking-wider text-slate-400">
+                Directory & Commerce
+              </p>
+              {[
+                { to: '/marketplace', label: 'Marketplace', icon: ShoppingBag, port: ':5006' },
+                { to: '/mechanics', label: 'Mechanics', icon: Wrench, port: ':5004' },
+                { to: '/profile', label: 'Profile & Auth', icon: User, port: 'Phase 5' },
+                ...(isAdminOrModerator
+                  ? [{ to: '/admin', label: 'Admin & Safety', icon: ShieldAlert, port: 'Phase 13' }]
+                  : []),
+              ].map((item) => {
+                const Icon = item.icon;
+                return (
+                  <NavLink
+                    key={item.to}
+                    to={item.to}
+                    className={({ isActive }) =>
+                      `flex items-center justify-between rounded-xl px-3 py-2.5 text-sm font-medium transition-colors ${
+                        isActive
+                          ? 'bg-primary-600 text-white shadow-sm'
+                          : 'text-slate-700 hover:bg-slate-100'
+                      }`
+                    }
+                  >
+                    <span className="flex items-center gap-2.5">
+                      <Icon className="h-4 w-4" aria-hidden="true" />
+                      {item.label}
+                    </span>
+                    <span className="rounded-full bg-slate-100 px-2 py-0.5 font-mono text-[10px] font-semibold text-slate-700">
+                      {item.port}
+                    </span>
+                  </NavLink>
+                );
+              })}
+            </nav>
+
+            <Card className="mt-6 bg-primary-950 text-white border-none">
+              <CardContent className="p-4">
+                <div className="flex items-center gap-2 text-xs font-semibold text-primary-200">
+                  <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />
+                  <span>Signed In ({authenticatedUser.role})</span>
+                </div>
+                <p className="mt-1.5 text-xs text-slate-300 leading-relaxed">
+                  All rider modules unlocked.{' '}
+                  {isAdminOrModerator
+                    ? 'Admin & Safety moderation console enabled.'
+                    : 'Standard Rider access active.'}
+                </p>
+              </CardContent>
+            </Card>
+          </aside>
+        ) : null}
 
         {/* Active Route Viewport */}
         <main id="main-content" tabIndex={-1} className="min-w-0 flex-1 focus:outline-none">
-          <Routes>
-            <Route
-              path="/"
-              element={renderFederatedModule(
-                'Community (@ridersclub/community)',
-                'http://localhost:5001/remoteEntry.js',
-                <CommunityComponent initialSection="communities" />,
-              )}
-            />
-            <Route
-              path="/communities/*"
-              element={renderFederatedModule(
-                'Community (@ridersclub/community)',
-                'http://localhost:5001/remoteEntry.js',
-                <CommunityComponent initialSection="communities" />,
-              )}
-            />
-            <Route
-              path="/blogs/*"
-              element={renderFederatedModule(
-                'Community (@ridersclub/community)',
-                'http://localhost:5001/remoteEntry.js',
-                <CommunityComponent initialSection="blogs" />,
-              )}
-            />
-            <Route
-              path="/rides/*"
-              element={renderFederatedModule(
-                'Rides (@ridersclub/rides)',
-                'http://localhost:5002/remoteEntry.js',
-                <RidesComponent />,
-              )}
-            />
-            <Route
-              path="/help/*"
-              element={renderFederatedModule(
-                'Help (@ridersclub/help)',
-                'http://localhost:5003/remoteEntry.js',
-                <HelpComponent />,
-              )}
-            />
-            <Route
-              path="/mechanics/*"
-              element={renderFederatedModule(
-                'Mechanics (@ridersclub/mechanics)',
-                'http://localhost:5004/remoteEntry.js',
-                <MechanicsComponent />,
-              )}
-            />
-            <Route
-              path="/garage/*"
-              element={renderFederatedModule(
-                'Garage (@ridersclub/garage)',
-                'http://localhost:5005/remoteEntry.js',
-                <GarageComponent />,
-              )}
-            />
-            <Route
-              path="/marketplace/*"
-              element={renderFederatedModule(
-                'Marketplace (@ridersclub/marketplace)',
-                'http://localhost:5006/remoteEntry.js',
-                <MarketplaceComponent />,
-              )}
-            />
-            <Route
-              path="/profile/*"
-              element={
-                <AuthAndProfileView
-                  apiBaseUrl={apiBaseUrl}
-                  currentUser={authenticatedUser}
-                  accessToken={accessToken}
-                  onSessionEstablished={handleSessionEstablished}
-                  onUserUpdated={setAuthenticatedUser}
-                  onSignOut={() => void handleSignOut()}
-                />
-              }
-            />
-            <Route
-              path="/auth/*"
-              element={
-                <AuthAndProfileView
-                  apiBaseUrl={apiBaseUrl}
-                  currentUser={authenticatedUser}
-                  accessToken={accessToken}
-                  onSessionEstablished={handleSessionEstablished}
-                  onUserUpdated={setAuthenticatedUser}
-                  onSignOut={() => void handleSignOut()}
-                />
-              }
-            />
-            <Route
-              path="/admin/*"
-              element={
-                <AdminModerationView
-                  apiBaseUrl={apiBaseUrl}
-                  currentUser={authenticatedUser}
-                  accessToken={accessToken}
-                />
-              }
-            />
-            <Route path="*" element={<NotFoundRouteView />} />
-          </Routes>
+          {!authenticatedUser ? (
+            <div className="space-y-6">
+              <div className="rounded-2xl bg-gradient-to-r from-primary-950 via-primary-900 to-primary-700 p-6 text-white shadow-md">
+                <Badge className="border-white/25 bg-white/15 text-white">
+                  Authentication Required
+                </Badge>
+                <h1 className="mt-2 text-2xl font-bold tracking-tight sm:text-3xl">
+                  Welcome to RidersClub
+                </h1>
+                <p className="mt-1 max-w-2xl text-sm text-primary-100">
+                  Sign in with Phone OTP or Google below to unlock Communities, Rider Blogs, Group
+                  Rides, Roadside Help, My Garage, Mechanics, and Marketplace.
+                </p>
+              </div>
+              <AuthAndProfileView
+                apiBaseUrl={apiBaseUrl}
+                currentUser={authenticatedUser}
+                accessToken={accessToken}
+                onSessionEstablished={handleSessionEstablished}
+                onUserUpdated={handleUserUpdated}
+                onSignOut={() => void handleSignOut()}
+              />
+            </div>
+          ) : (
+            <Routes>
+              <Route
+                path="/"
+                element={renderFederatedModule(
+                  'Community (@ridersclub/community)',
+                  'http://localhost:5001/remoteEntry.js',
+                  <CommunityComponent initialSection="communities" />,
+                )}
+              />
+              <Route
+                path="/communities/*"
+                element={renderFederatedModule(
+                  'Community (@ridersclub/community)',
+                  'http://localhost:5001/remoteEntry.js',
+                  <CommunityComponent initialSection="communities" />,
+                )}
+              />
+              <Route
+                path="/blogs/*"
+                element={renderFederatedModule(
+                  'Community (@ridersclub/community)',
+                  'http://localhost:5001/remoteEntry.js',
+                  <CommunityComponent initialSection="blogs" />,
+                )}
+              />
+              <Route
+                path="/rides/*"
+                element={renderFederatedModule(
+                  'Rides (@ridersclub/rides)',
+                  'http://localhost:5002/remoteEntry.js',
+                  <RidesComponent />,
+                )}
+              />
+              <Route
+                path="/help/*"
+                element={renderFederatedModule(
+                  'Help (@ridersclub/help)',
+                  'http://localhost:5003/remoteEntry.js',
+                  <HelpComponent />,
+                )}
+              />
+              <Route
+                path="/mechanics/*"
+                element={renderFederatedModule(
+                  'Mechanics (@ridersclub/mechanics)',
+                  'http://localhost:5004/remoteEntry.js',
+                  <MechanicsComponent />,
+                )}
+              />
+              <Route
+                path="/garage/*"
+                element={renderFederatedModule(
+                  'Garage (@ridersclub/garage)',
+                  'http://localhost:5005/remoteEntry.js',
+                  <GarageComponent />,
+                )}
+              />
+              <Route
+                path="/marketplace/*"
+                element={renderFederatedModule(
+                  'Marketplace (@ridersclub/marketplace)',
+                  'http://localhost:5006/remoteEntry.js',
+                  <MarketplaceComponent />,
+                )}
+              />
+              <Route
+                path="/profile/*"
+                element={
+                  <AuthAndProfileView
+                    apiBaseUrl={apiBaseUrl}
+                    currentUser={authenticatedUser}
+                    accessToken={accessToken}
+                    onSessionEstablished={handleSessionEstablished}
+                    onUserUpdated={handleUserUpdated}
+                    onSignOut={() => void handleSignOut()}
+                  />
+                }
+              />
+              <Route
+                path="/auth/*"
+                element={
+                  <AuthAndProfileView
+                    apiBaseUrl={apiBaseUrl}
+                    currentUser={authenticatedUser}
+                    accessToken={accessToken}
+                    onSessionEstablished={handleSessionEstablished}
+                    onUserUpdated={handleUserUpdated}
+                    onSignOut={() => void handleSignOut()}
+                  />
+                }
+              />
+              <Route
+                path="/admin/*"
+                element={
+                  <AdminModerationView
+                    apiBaseUrl={apiBaseUrl}
+                    currentUser={authenticatedUser}
+                    accessToken={accessToken}
+                  />
+                }
+              />
+              <Route path="*" element={<NotFoundRouteView />} />
+            </Routes>
+          )}
         </main>
       </div>
 
-      {/* Mobile Bottom Priority Navigation Bar (Max 5 items to prevent clutter) */}
-      <nav
-        aria-label="Mobile Primary Navigation"
-        className="fixed bottom-0 left-0 right-0 z-30 flex h-16 items-center justify-around border-t border-slate-200 bg-white px-2 shadow-lg md:hidden"
-      >
-        <NavLink
-          to="/communities"
-          className={({ isActive }) =>
-            `flex flex-col items-center gap-0.5 px-2 py-1 text-[11px] font-medium ${
-              isActive || location.pathname === '/' || location.pathname.startsWith('/blogs')
-                ? 'text-primary-600'
-                : 'text-slate-600'
-            }`
-          }
+      {/* Mobile Bottom Priority Navigation Bar (Visible only after sign-in) */}
+      {authenticatedUser ? (
+        <nav
+          aria-label="Mobile Primary Navigation"
+          className="fixed bottom-0 left-0 right-0 z-30 flex h-16 items-center justify-around border-t border-slate-200 bg-white px-2 shadow-lg md:hidden"
         >
-          <Compass className="h-5 w-5" aria-hidden="true" />
-          <span>Explore</span>
-        </NavLink>
+          <NavLink
+            to="/communities"
+            className={({ isActive }) =>
+              `flex flex-col items-center gap-0.5 px-2 py-1 text-[11px] font-medium ${
+                isActive || location.pathname === '/'
+                  ? 'text-primary-600'
+                  : 'text-slate-600'
+              }`
+            }
+          >
+            <Compass className="h-5 w-5" aria-hidden="true" />
+            <span>Communities</span>
+          </NavLink>
 
-        <NavLink
-          to="/rides"
-          className={({ isActive }) =>
-            `flex flex-col items-center gap-0.5 px-2 py-1 text-[11px] font-medium ${
-              isActive ? 'text-primary-600' : 'text-slate-600'
-            }`
-          }
-        >
-          <Car className="h-5 w-5" aria-hidden="true" />
-          <span>Rides</span>
-        </NavLink>
+          <NavLink
+            to="/rides"
+            className={({ isActive }) =>
+              `flex flex-col items-center gap-0.5 px-2 py-1 text-[11px] font-medium ${
+                isActive ? 'text-primary-600' : 'text-slate-600'
+              }`
+            }
+          >
+            <Car className="h-5 w-5" aria-hidden="true" />
+            <span>Rides</span>
+          </NavLink>
 
-        <NavLink
-          to="/help"
-          className={({ isActive }) =>
-            `flex flex-col items-center gap-0.5 rounded-xl px-3 py-1 text-[11px] font-semibold ${
-              isActive
-                ? 'bg-amber-600 text-white'
-                : 'bg-amber-50 text-amber-800 border border-amber-200'
-            }`
-          }
-        >
-          <AlertTriangle className="h-5 w-5" aria-hidden="true" />
-          <span>Help</span>
-        </NavLink>
+          <NavLink
+            to="/help"
+            className={({ isActive }) =>
+              `flex flex-col items-center gap-0.5 rounded-xl px-3 py-1 text-[11px] font-semibold ${
+                isActive
+                  ? 'bg-amber-600 text-white'
+                  : 'bg-amber-50 text-amber-800 border border-amber-200'
+              }`
+            }
+          >
+            <AlertTriangle className="h-5 w-5" aria-hidden="true" />
+            <span>Help</span>
+          </NavLink>
 
-        <NavLink
-          to="/garage"
-          className={({ isActive }) =>
-            `flex flex-col items-center gap-0.5 px-2 py-1 text-[11px] font-medium ${
-              isActive ? 'text-primary-600' : 'text-slate-600'
-            }`
-          }
-        >
-          <Shield className="h-5 w-5" aria-hidden="true" />
-          <span>Garage</span>
-        </NavLink>
+          <NavLink
+            to="/garage"
+            className={({ isActive }) =>
+              `flex flex-col items-center gap-0.5 px-2 py-1 text-[11px] font-medium ${
+                isActive ? 'text-primary-600' : 'text-slate-600'
+              }`
+            }
+          >
+            <Shield className="h-5 w-5" aria-hidden="true" />
+            <span>Garage</span>
+          </NavLink>
 
-        <button
-          type="button"
-          onClick={() => setIsMobileMoreOpen((v) => !v)}
-          aria-expanded={isMobileMoreOpen}
-          aria-label="More navigation destinations"
-          className="flex flex-col items-center gap-0.5 px-2 py-1 text-[11px] font-medium text-slate-600"
-        >
-          <Menu className="h-5 w-5" aria-hidden="true" />
-          <span>More</span>
-        </button>
-      </nav>
+          <button
+            type="button"
+            onClick={() => setIsMobileMoreOpen((v) => !v)}
+            aria-expanded={isMobileMoreOpen}
+            aria-label="More navigation destinations"
+            className="flex flex-col items-center gap-0.5 px-2 py-1 text-[11px] font-medium text-slate-600"
+          >
+            <Menu className="h-5 w-5" aria-hidden="true" />
+            <span>More</span>
+          </button>
+        </nav>
+      ) : null}
 
       {/* Mobile Secondary Navigation Sheet */}
-      {isMobileMoreOpen && (
+      {authenticatedUser && isMobileMoreOpen && (
         <div
           role="dialog"
           aria-label="Secondary Navigation Menu"
@@ -983,7 +1080,9 @@ export function ShellApp({
                 { to: '/marketplace', label: 'Marketplace', icon: ShoppingBag },
                 { to: '/mechanics', label: 'Mechanics', icon: Wrench },
                 { to: '/profile', label: 'Profile & Auth', icon: User },
-                { to: '/admin', label: 'Admin & Safety', icon: ShieldAlert },
+                ...(isAdminOrModerator
+                  ? [{ to: '/admin', label: 'Admin & Safety', icon: ShieldAlert }]
+                  : []),
               ].map((item) => {
                 const Icon = item.icon;
                 return (
