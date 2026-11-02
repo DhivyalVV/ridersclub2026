@@ -2,13 +2,50 @@ import * as React from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import { UserRole } from '@ridersclub/types';
+import {
+  AccountStatus,
+  DirectMessagePrivacy,
+  UserRole,
+  type AuthenticatedUserAccount,
+} from '@ridersclub/types';
 import { openDirectChatWithUser } from '@ridersclub/ui';
 import { ShellApp } from '../ShellApp.js';
 
 afterEach(() => {
   cleanup();
 });
+
+const MOCK_NORMAL_RIDER_USER: AuthenticatedUserAccount = {
+  id: 'user-normal-rider-1',
+  email: 'dhivyal@ridersclub.dev',
+  phoneNumber: '+919845012345',
+  hasGoogleLinked: true,
+  role: UserRole.USER,
+  accountStatus: AccountStatus.ACTIVE,
+  allowDirectMessages: DirectMessagePrivacy.EVERYONE,
+  profile: {
+    userId: 'user-normal-rider-1',
+    username: 'dhivyal_rc',
+    displayName: 'Dhivyal Rider',
+    bio: 'RidersClub Member • Touring & Garage Enthusiast',
+    avatarUrl: null,
+    city: 'Bengaluru',
+    showPhone: false,
+  },
+};
+
+const MOCK_ADMIN_USER: AuthenticatedUserAccount = {
+  ...MOCK_NORMAL_RIDER_USER,
+  id: 'user-admin-1',
+  email: 'admin@ridersclub.dev',
+  role: UserRole.ADMIN,
+  profile: {
+    ...MOCK_NORMAL_RIDER_USER.profile,
+    userId: 'user-admin-1',
+    username: 'rc_admin',
+    displayName: 'RidersClub Admin',
+  },
+};
 
 function MockFederatedCommunity({
   initialSection = 'communities',
@@ -43,21 +80,29 @@ function MockFederatedCommunity({
 }
 
 describe('ShellApp host micro-frontend & Phase 4 multi-remote orchestration', () => {
-  it('renders global navigation and mounts federated Community view', () => {
+  it('renders global navigation and mounts federated Community view for an authenticated normal rider (USER) while hiding Admin & Safety tab', () => {
     render(
       <MemoryRouter initialEntries={['/communities']}>
-        <ShellApp CommunityComponentOverride={MockFederatedCommunity} />
+        <ShellApp
+          CommunityComponentOverride={MockFederatedCommunity}
+          initialAuthenticatedUser={MOCK_NORMAL_RIDER_USER}
+        />
       </MemoryRouter>,
     );
 
     expect(screen.getByText(/Mock Federated Community \(communities\)/i)).toBeTruthy();
     expect(screen.getByRole('button', { name: /Open 1:1 Direct Messages Drawer/i })).toBeTruthy();
+    // Normal rider sees all core rider tabs, but NOT Admin & Safety
+    expect(screen.queryByRole('link', { name: /Admin & Safety/i })).toBeNull();
   });
 
   it('opens global 1:1 Chat Drawer when a federated remote dispatches openDirectChatWithUser', () => {
     render(
       <MemoryRouter initialEntries={['/communities']}>
-        <ShellApp CommunityComponentOverride={MockFederatedCommunity} />
+        <ShellApp
+          CommunityComponentOverride={MockFederatedCommunity}
+          initialAuthenticatedUser={MOCK_NORMAL_RIDER_USER}
+        />
       </MemoryRouter>,
     );
 
@@ -68,9 +113,9 @@ describe('ShellApp host micro-frontend & Phase 4 multi-remote orchestration', ()
     expect(screen.getByText(/Initiated from Blog: Valve Clearance Guide/i)).toBeTruthy();
   });
 
-  it('supports direct URL navigation across all 6 federated remotes (Rides, Help, Mechanics, Garage, Marketplace, Blogs)', async () => {
+  it('supports direct URL navigation across all 6 federated remotes (Rides, Help, Mechanics, Garage, Marketplace, Blogs) once signed in', async () => {
     const routesToVerify: Array<{ path: string; expectedHeading: RegExp }> = [
-      { path: '/blogs', expectedHeading: /Communities & Rider Blogs/i },
+      { path: '/blogs', expectedHeading: /Rider Blogs & Technical Guides/i },
       { path: '/rides', expectedHeading: /Group Ride Organization/i },
       { path: '/help', expectedHeading: /Roadside Assistance & Peer Help/i },
       { path: '/mechanics', expectedHeading: /Mechanics & Service Providers/i },
@@ -82,7 +127,7 @@ describe('ShellApp host micro-frontend & Phase 4 multi-remote orchestration', ()
       cleanup();
       render(
         <MemoryRouter initialEntries={[route.path]}>
-          <ShellApp />
+          <ShellApp initialAuthenticatedUser={MOCK_NORMAL_RIDER_USER} />
         </MemoryRouter>,
       );
 
@@ -100,6 +145,7 @@ describe('ShellApp host micro-frontend & Phase 4 multi-remote orchestration', ()
     render(
       <MemoryRouter initialEntries={['/rides']}>
         <ShellApp
+          initialAuthenticatedUser={MOCK_NORMAL_RIDER_USER}
           remoteOverrides={{
             Rides: OfflineRidesRemote,
             Community: MockFederatedCommunity,
@@ -125,23 +171,28 @@ describe('ShellApp host micro-frontend & Phase 4 multi-remote orchestration', ()
     spy.mockRestore();
   });
 
-  it('renders Google OAuth and Phone OTP authentication cards on /profile when signed out', () => {
+  it('requires sign-in first and hides navigation tabs when signed out', () => {
     render(
-      <MemoryRouter initialEntries={['/profile']}>
-        <ShellApp />
+      <MemoryRouter initialEntries={['/communities']}>
+        <ShellApp initialAuthenticatedUser={null} />
       </MemoryRouter>,
     );
 
+    expect(screen.getByText('Welcome to RidersClub')).toBeTruthy();
     expect(screen.getByText('Sign In with Phone OTP')).toBeTruthy();
     expect(screen.getByText('Continue with Google')).toBeTruthy();
     expect(screen.getByRole('button', { name: /Send 6-Digit OTP Code/i })).toBeTruthy();
     expect(screen.getByRole('button', { name: /Sign In with Google/i })).toBeTruthy();
+    expect(screen.queryByLabelText('Desktop Navigation')).toBeNull();
   });
 
   it('deduplicates 1:1 conversations when triggered multiple times for the same peer and sends messages', () => {
     render(
       <MemoryRouter initialEntries={['/communities']}>
-        <ShellApp CommunityComponentOverride={MockFederatedCommunity} />
+        <ShellApp
+          CommunityComponentOverride={MockFederatedCommunity}
+          initialAuthenticatedUser={MOCK_NORMAL_RIDER_USER}
+        />
       </MemoryRouter>,
     );
 
@@ -163,13 +214,14 @@ describe('ShellApp host micro-frontend & Phase 4 multi-remote orchestration', ()
     ).toBeTruthy();
   });
 
-  it('renders Phase 13 Admin & Moderation Center on /admin, actions a report, and logs an immutable audit entry', () => {
+  it('renders Phase 13 Admin & Moderation Center on /admin for ADMIN users, actions a report, and logs an immutable audit entry', () => {
     render(
       <MemoryRouter initialEntries={['/admin']}>
-        <ShellApp />
+        <ShellApp initialAuthenticatedUser={MOCK_ADMIN_USER} />
       </MemoryRouter>,
     );
 
+    expect(screen.getByRole('link', { name: /Admin & Safety/i })).toBeTruthy();
     expect(screen.getByText('Administrator & Moderation Center')).toBeTruthy();
     expect(screen.getByTestId('open-reports-count').textContent).toBe('2');
 

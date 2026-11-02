@@ -1,17 +1,42 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
+import {
+  AccountStatus,
+  DirectMessagePrivacy,
+  UserRole,
+  type AuthenticatedUserAccount,
+} from '@ridersclub/types';
 import { ShellApp } from '../ShellApp.js';
 
 afterEach(() => {
   cleanup();
 });
 
+const MOCK_ADMIN_JOURNEY_USER: AuthenticatedUserAccount = {
+  id: 'user-admin-journey-1',
+  email: 'admin@ridersclub.dev',
+  phoneNumber: '+919845012345',
+  hasGoogleLinked: true,
+  role: UserRole.ADMIN,
+  accountStatus: AccountStatus.ACTIVE,
+  allowDirectMessages: DirectMessagePrivacy.EVERYONE,
+  profile: {
+    userId: 'user-admin-journey-1',
+    username: 'rc_admin',
+    displayName: 'RidersClub Admin',
+    bio: 'RidersClub Platform Administrator',
+    avatarUrl: null,
+    city: 'Bengaluru',
+    showPhone: false,
+  },
+};
+
 describe('Phase 14 — Cross-Micro-Frontend End-to-End Rider Journeys', () => {
   it('completes an end-to-end journey across Marketplace (:5006), Shell 1:1 Direct Chat (:5000), Roadside Help (:5003), and Admin Moderation (:5000/admin)', async () => {
     render(
       <MemoryRouter initialEntries={['/marketplace']}>
-        <ShellApp />
+        <ShellApp initialAuthenticatedUser={MOCK_ADMIN_JOURNEY_USER} />
       </MemoryRouter>,
     );
 
@@ -94,4 +119,3 @@ describe('Phase 14 — Cross-Micro-Frontend End-to-End Rider Journeys', () => {
     expect(screen.getByTestId('open-reports-count').textContent).toBe('3');
   }, 20000);
 });
-

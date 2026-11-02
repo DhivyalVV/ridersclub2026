@@ -136,12 +136,12 @@ export function AdminModerationView({
   const [reportReason, setReportReason] = React.useState('');
   const [composerError, setComposerError] = React.useState<string | null>(null);
 
-  const effectiveRole = currentUser?.role ?? UserRole.ADMIN;
+  const effectiveRole = currentUser?.role ?? UserRole.USER;
   const isModeratorOrAdmin =
     effectiveRole === UserRole.ADMIN || effectiveRole === UserRole.MODERATOR;
 
   React.useEffect(() => {
-    if (!accessToken) {
+    if (!accessToken || !isModeratorOrAdmin) {
       return;
     }
     let isMounted = true;
@@ -164,7 +164,7 @@ export function AdminModerationView({
     return () => {
       isMounted = false;
     };
-  }, [accessToken, apiBaseUrl]);
+  }, [accessToken, apiBaseUrl, isModeratorOrAdmin]);
 
   const filteredReports = React.useMemo(() => {
     if (statusFilter === 'ALL') {
@@ -348,6 +348,15 @@ export function AdminModerationView({
           // Keep optimistic report when offline
         });
     }
+  }
+
+  if (!isModeratorOrAdmin) {
+    return (
+      <EmptyState
+        title="Administrator or Moderator Access Required"
+        description="The Admin & Moderation Center is restricted to accounts with ADMIN or MODERATOR roles."
+      />
+    );
   }
 
   return (

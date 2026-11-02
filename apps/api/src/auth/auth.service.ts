@@ -143,6 +143,9 @@ export class AuthService {
   ): Promise<AuthSessionResponse> {
     const normalizedEmail = dto.email.trim().toLowerCase();
     const googleSubjectId = dto.googleSubjectId.trim();
+    const isDesignatedAdminEmail =
+      normalizedEmail === 'admin@ridersclub.dev' ||
+      normalizedEmail === 'admin.governance@ridersclub.example';
 
     // 1. Check if a user already exists with this exact Google Subject ID
     let user = await this.prisma.user.findUnique({
@@ -169,7 +172,10 @@ export class AuthService {
 
         user = await this.prisma.user.update({
           where: { id: existingEmailUser.id },
-          data: { googleSubjectId },
+          data: {
+            googleSubjectId,
+            ...(isDesignatedAdminEmail ? { role: UserRole.ADMIN } : {}),
+          },
           include: { profile: true },
         });
       } else {
@@ -179,7 +185,7 @@ export class AuthService {
           data: {
             email: normalizedEmail,
             googleSubjectId,
-            role: UserRole.USER,
+            role: isDesignatedAdminEmail ? UserRole.ADMIN : UserRole.USER,
             accountStatus: AccountStatus.ACTIVE,
             allowDirectMessages: DirectMessagePrivacy.EVERYONE,
             profile: {
@@ -187,13 +193,21 @@ export class AuthService {
                 username: generatedUsername,
                 displayName: dto.displayName.trim(),
                 avatarUrl: dto.avatarUrl?.trim() || null,
-                bio: 'RidersClub member',
+                bio: isDesignatedAdminEmail
+                  ? 'RidersClub Platform Administrator'
+                  : 'RidersClub member',
               },
             },
           },
           include: { profile: true },
         });
       }
+    } else if (isDesignatedAdminEmail && user.role !== UserRole.ADMIN) {
+      user = await this.prisma.user.update({
+        where: { id: user.id },
+        data: { role: UserRole.ADMIN },
+        include: { profile: true },
+      });
     }
 
     if (user.accountStatus !== AccountStatus.ACTIVE) {

@@ -221,7 +221,7 @@ function getStoredToken(): string | null {
 export function CommunityRemoteApp({
   initialSection = 'communities',
 }: CommunityRemoteAppProps): React.JSX.Element {
-  const [activeTab, setActiveTab] = React.useState<'communities' | 'blogs'>(initialSection);
+  const activeSection: 'communities' | 'blogs' = initialSection;
   const [searchQuery, setSearchQuery] = React.useState('');
   const [communities, setCommunities] = React.useState<CommunityItem[]>(INITIAL_COMMUNITIES);
   const [blogs, setBlogs] = React.useState<BlogPostItem[]>(INITIAL_BLOGS);
@@ -257,7 +257,7 @@ export function CommunityRemoteApp({
   const [commentDraft, setCommentDraft] = React.useState('');
 
   React.useEffect(() => {
-    setActiveTab(initialSection);
+    setSearchQuery('');
   }, [initialSection]);
 
   const loadLiveCommunitiesAndBlogs = React.useCallback(async () => {
@@ -638,7 +638,6 @@ export function CommunityRemoteApp({
     setBlogContent('');
     setBlogTagsInput('Touring Prep, Maintenance');
     setShowBlogComposer(true);
-    setActiveTab('blogs');
   };
 
   const openEditBlogComposer = (blog: BlogPostItem) => {
@@ -928,7 +927,14 @@ export function CommunityRemoteApp({
   const currentUser = getStoredUser();
 
   return (
-    <section aria-label="Community and Blogs Federated Module" className="space-y-6">
+    <section
+      aria-label={
+        activeSection === 'communities'
+          ? 'Riding Communities Federated Module'
+          : 'Rider Blogs Federated Module'
+      }
+      className="space-y-6"
+    >
       {/* Federated Remote Banner & Header */}
       <div className="rounded-2xl bg-gradient-to-r from-primary-900 via-primary-800 to-primary-700 p-5 text-white shadow-md sm:p-7">
         <div className="flex flex-wrap items-center justify-between gap-3">
@@ -937,41 +943,45 @@ export function CommunityRemoteApp({
             <span>Federated Remote • @ridersclub/community (:5001)</span>
           </div>
           <Badge variant="secondary" className="border-none bg-emerald-100 text-emerald-950">
-            Phase 6 Live Communities, Chat & Blogs
+            {activeSection === 'communities'
+              ? 'Phase 6 Live Communities & Group Chat'
+              : 'Phase 6 Live Rider Blogs & Discussions'}
           </Badge>
         </div>
 
         <div className="mt-4 flex flex-col justify-between gap-4 lg:flex-row lg:items-end">
           <div>
             <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
-              Communities & Rider Blogs
+              {activeSection === 'communities'
+                ? 'Riding Communities'
+                : 'Rider Blogs & Technical Guides'}
             </h1>
             <p className="mt-1.5 max-w-2xl text-sm text-primary-100 sm:text-base">
-              Connect with regional riding chapters, join real-time community discussions, and read
-              long-form maintenance and travel logs. Click any profile below to initiate a 1:1
-              private conversation in the Shell.
+              {activeSection === 'communities'
+                ? 'Connect with regional riding chapters, join real-time community discussions, and click any member profile to initiate a 1:1 private conversation in the Shell.'
+                : 'Read and publish long-form maintenance guides, high-altitude travel logs, and pre-purchase inspection checklists. Click any author profile to initiate a 1:1 private conversation in the Shell.'}
             </p>
           </div>
           <div className="flex flex-wrap gap-2.5">
-            <Button
-              variant="secondary"
-              className="bg-white text-primary-900 hover:bg-primary-50"
-              onClick={() => {
-                setActiveTab('communities');
-                setShowCreateCommunity(true);
-              }}
-            >
-              <Plus className="h-4 w-4" aria-hidden="true" />
-              New Community
-            </Button>
-            <Button
-              variant="outline"
-              className="border-white/30 bg-primary-800/50 text-white hover:bg-primary-700 hover:text-white"
-              onClick={openNewBlogComposer}
-            >
-              <BookOpen className="h-4 w-4" aria-hidden="true" />
-              Write Blog
-            </Button>
+            {activeSection === 'communities' ? (
+              <Button
+                variant="secondary"
+                className="bg-white text-primary-900 hover:bg-primary-50"
+                onClick={() => setShowCreateCommunity(true)}
+              >
+                <Plus className="h-4 w-4" aria-hidden="true" />
+                New Community
+              </Button>
+            ) : (
+              <Button
+                variant="secondary"
+                className="bg-white text-primary-900 hover:bg-primary-50"
+                onClick={openNewBlogComposer}
+              >
+                <BookOpen className="h-4 w-4" aria-hidden="true" />
+                Write Blog
+              </Button>
+            )}
           </div>
         </div>
       </div>
@@ -1512,41 +1522,20 @@ export function CommunityRemoteApp({
         </Card>
       ) : null}
 
-      {/* Controls Bar: Segmented Switcher + Search */}
+      {/* Controls Bar: Section Count Summary + Search (No internal tab switcher) */}
       <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
-        <div
-          role="tablist"
-          aria-label="Community module views"
-          className="inline-flex rounded-xl border border-slate-200 bg-white p-1 shadow-sm"
-        >
-          <button
-            type="button"
-            role="tab"
-            aria-selected={activeTab === 'communities'}
-            onClick={() => setActiveTab('communities')}
-            className={`inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition-colors ${
-              activeTab === 'communities'
-                ? 'bg-primary-600 text-white shadow-sm'
-                : 'text-slate-600 hover:text-slate-900'
-            }`}
-          >
-            <Compass className="h-4 w-4" aria-hidden="true" />
-            Communities ({filteredCommunities.length})
-          </button>
-          <button
-            type="button"
-            role="tab"
-            aria-selected={activeTab === 'blogs'}
-            onClick={() => setActiveTab('blogs')}
-            className={`inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition-colors ${
-              activeTab === 'blogs'
-                ? 'bg-primary-600 text-white shadow-sm'
-                : 'text-slate-600 hover:text-slate-900'
-            }`}
-          >
-            <BookOpen className="h-4 w-4" aria-hidden="true" />
-            Rider Blogs ({filteredBlogs.length})
-          </button>
+        <div className="inline-flex items-center gap-2 text-sm font-semibold text-slate-700">
+          {activeSection === 'communities' ? (
+            <>
+              <Compass className="h-4 w-4 text-primary-600" aria-hidden="true" />
+              <span>Showing {filteredCommunities.length} Riding Communities</span>
+            </>
+          ) : (
+            <>
+              <BookOpen className="h-4 w-4 text-primary-600" aria-hidden="true" />
+              <span>Showing {filteredBlogs.length} Rider Blogs</span>
+            </>
+          )}
         </div>
 
         <div className="relative w-full sm:w-80">
@@ -1559,18 +1548,22 @@ export function CommunityRemoteApp({
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder={
-              activeTab === 'communities'
+              activeSection === 'communities'
                 ? 'Search communities or categories...'
                 : 'Search blogs or tags...'
             }
-            aria-label="Search communities and blogs"
+            aria-label={
+              activeSection === 'communities'
+                ? 'Search communities'
+                : 'Search blogs'
+            }
             className="h-10 w-full rounded-xl border border-slate-300 bg-white pl-9 pr-4 text-sm text-slate-900 placeholder:text-slate-400 focus:border-primary-600 focus:outline-none focus:ring-2 focus:ring-primary-600/20"
           />
         </div>
       </div>
 
-      {/* Tab Content */}
-      {activeTab === 'communities' ? (
+      {/* Dedicated Section Content */}
+      {activeSection === 'communities' ? (
         <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
           {filteredCommunities.map((community) => (
             <Card key={community.id} className="flex flex-col justify-between">
