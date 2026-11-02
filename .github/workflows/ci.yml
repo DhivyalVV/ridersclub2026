@@ -2,9 +2,9 @@ name: RidersClub CI & Verification Pipeline
 
 on:
   push:
-    branches: [main, develop]
+    branches: [master, main, staging, develop]
   pull_request:
-    branches: [main, develop]
+    branches: [master, main, staging, develop]
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -68,4 +68,3 @@ jobs:
 
       - name: Build Shared Packages, NestJS API, Shell & 6 Federated Remotes
         run: pnpm build
-
