@@ -24,6 +24,7 @@ const MOCK_NORMAL_RIDER_USER: AuthenticatedUserAccount = {
   accountStatus: AccountStatus.ACTIVE,
   allowDirectMessages: DirectMessagePrivacy.EVERYONE,
   profile: {
+    id: 'prof-test-1',
     userId: 'user-normal-rider-1',
     username: 'dhivyal_rc',
     displayName: 'Dhivyal Rider',
@@ -31,6 +32,8 @@ const MOCK_NORMAL_RIDER_USER: AuthenticatedUserAccount = {
     avatarUrl: null,
     city: 'Bengaluru',
     showPhone: false,
+    createdAt: '2026-01-01T00:00:00.000Z',
+    updatedAt: '2026-01-01T00:00:00.000Z',
   },
 };
 

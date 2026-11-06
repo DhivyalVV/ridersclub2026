@@ -4,6 +4,17 @@
 # ==============================================================================
 FROM node:20-alpine AS builder
 
+WORKDIR /workspace
+RUN corepack enable && corepack prepare pnpm@9.15.4 --activate
+
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml turbo.json ./
+COPY packages ./packages
+COPY apps ./apps
+
+RUN pnpm install --frozen-lockfile
+RUN pnpm --filter @ridersclub/types build && \
+    pnpm --filter @ridersclub/ui build
+
 ARG APP_NAME=shell
 ARG VITE_API_BASE_URL=http://localhost:4000/api/v1
 ARG VITE_COMMUNITY_REMOTE_URL=http://localhost:5001/remoteEntry.js
@@ -21,17 +32,7 @@ ENV VITE_MECHANICS_REMOTE_URL=${VITE_MECHANICS_REMOTE_URL}
 ENV VITE_GARAGE_REMOTE_URL=${VITE_GARAGE_REMOTE_URL}
 ENV VITE_MARKETPLACE_REMOTE_URL=${VITE_MARKETPLACE_REMOTE_URL}
 
-WORKDIR /workspace
-RUN corepack enable && corepack prepare pnpm@9.15.4 --activate
-
-COPY package.json pnpm-lock.yaml pnpm-workspace.yaml turbo.json ./
-COPY packages ./packages
-COPY apps ./apps
-
-RUN pnpm install --frozen-lockfile
-RUN pnpm --filter @ridersclub/types build && \
-    pnpm --filter @ridersclub/ui build && \
-    pnpm --filter "@ridersclub/${APP_NAME}" build
+RUN pnpm --filter "@ridersclub/${APP_NAME}" build
 
 # ==============================================================================
 # Stage 2: Production Nginx Static + Module Federation Host/Remote Server

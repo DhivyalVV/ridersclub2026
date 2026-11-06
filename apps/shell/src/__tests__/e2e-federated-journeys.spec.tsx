@@ -22,6 +22,7 @@ const MOCK_ADMIN_JOURNEY_USER: AuthenticatedUserAccount = {
   accountStatus: AccountStatus.ACTIVE,
   allowDirectMessages: DirectMessagePrivacy.EVERYONE,
   profile: {
+    id: 'prof-test-1',
     userId: 'user-admin-journey-1',
     username: 'rc_admin',
     displayName: 'RidersClub Admin',
@@ -29,6 +30,8 @@ const MOCK_ADMIN_JOURNEY_USER: AuthenticatedUserAccount = {
     avatarUrl: null,
     city: 'Bengaluru',
     showPhone: false,
+    createdAt: '2026-01-01T00:00:00.000Z',
+    updatedAt: '2026-01-01T00:00:00.000Z',
   },
 };
 

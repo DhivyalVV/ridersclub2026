@@ -230,7 +230,7 @@ export function AuthAndProfileView({
             .replace(/[^a-z0-9]+/g, '_') || 'rider_user';
         const fallbackSession: AuthSessionResponse = {
           accessToken: `local-session-${Date.now()}`,
-          expiresInSeconds: 3600,
+          expiresAt: new Date(Date.now() + 3600_000).toISOString(),
           user: {
             id: isAdminEmail ? 'user-admin-dev' : 'user-rider-dev',
             email: normalizedEmail,
@@ -240,6 +240,7 @@ export function AuthAndProfileView({
             accountStatus: AccountStatus.ACTIVE,
             allowDirectMessages: DirectMessagePrivacy.EVERYONE,
             profile: {
+              id: isAdminEmail ? 'prof-admin-dev' : 'prof-rider-dev',
               userId: isAdminEmail ? 'user-admin-dev' : 'user-rider-dev',
               username: fallbackUsername,
               displayName: googleName.trim() || 'Dhivyal Rider',
@@ -249,6 +250,8 @@ export function AuthAndProfileView({
               avatarUrl: null,
               city: 'Bengaluru',
               showPhone: false,
+              createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString(),
             },
           },
         };
