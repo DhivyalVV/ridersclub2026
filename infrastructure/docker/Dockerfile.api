@@ -4,13 +4,13 @@
 # ==============================================================================
 FROM node:20-alpine AS builder
 
+RUN apk add --no-cache openssl
 WORKDIR /workspace
 RUN corepack enable && corepack prepare pnpm@9.15.4 --activate
 
-COPY package.json pnpm-lock.yaml pnpm-workspace.yaml turbo.json tsconfig.base.json ./
-COPY packages/config ./packages/config
-COPY packages/types ./packages/types
-COPY apps/api ./apps/api
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml turbo.json ./
+COPY packages ./packages
+COPY apps ./apps
 
 RUN pnpm install --frozen-lockfile
 RUN pnpm --filter @ridersclub/api prisma:generate
@@ -21,10 +21,12 @@ RUN pnpm --filter @ridersclub/types build && pnpm --filter @ridersclub/api build
 # ==============================================================================
 FROM node:20-alpine AS runner
 
+RUN apk add --no-cache openssl
 WORKDIR /workspace
 ENV NODE_ENV=production
 ENV PORT=4000
 
+COPY --from=builder --chown=node:node /workspace/package.json /workspace/pnpm-lock.yaml /workspace/pnpm-workspace.yaml ./
 COPY --from=builder --chown=node:node /workspace/node_modules ./node_modules
 COPY --from=builder --chown=node:node /workspace/packages/types ./packages/types
 COPY --from=builder --chown=node:node /workspace/apps/api/node_modules ./apps/api/node_modules
@@ -32,11 +34,11 @@ COPY --from=builder --chown=node:node /workspace/apps/api/dist ./apps/api/dist
 COPY --from=builder --chown=node:node /workspace/apps/api/prisma ./apps/api/prisma
 COPY --from=builder --chown=node:node /workspace/apps/api/package.json ./apps/api/package.json
 
+WORKDIR /workspace/apps/api
 USER node
 EXPOSE 4000
 
 HEALTHCHECK --interval=15s --timeout=5s --start-period=15s --retries=3 \
   CMD wget --no-verbose --tries=1 --spider http://localhost:4000/api/v1/health || exit 1
 
-CMD ["node", "apps/api/dist/main.js"]
-
+CMD ["node", "dist/main.js"]
