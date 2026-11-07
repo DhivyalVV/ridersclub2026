@@ -1,0 +1,59 @@
+# ==============================================================================
+# RidersClub Caddy Reverse Proxy + Automatic Let's Encrypt HTTPS Configuration
+# Copy to /etc/caddy/Caddyfile on your EC2 server and run: sudo systemctl restart caddy
+# ==============================================================================
+
+ridersclub.in, www.ridersclub.in {
+    handle_path /mfe/community/* {
+        reverse_proxy localhost:5001
+    }
+    handle_path /mfe/rides/* {
+        reverse_proxy localhost:5002
+    }
+    handle_path /mfe/help/* {
+        reverse_proxy localhost:5003
+    }
+    handle_path /mfe/mechanics/* {
+        reverse_proxy localhost:5004
+    }
+    handle_path /mfe/garage/* {
+        reverse_proxy localhost:5005
+    }
+    handle_path /mfe/marketplace/* {
+        reverse_proxy localhost:5006
+    }
+    handle /api/* {
+        reverse_proxy localhost:4000
+    }
+    handle {
+        reverse_proxy localhost:5000
+    }
+}
+
+staging.ridersclub.in {
+    handle_path /mfe/community/* {
+        reverse_proxy localhost:5101
+    }
+    handle_path /mfe/rides/* {
+        reverse_proxy localhost:5102
+    }
+    handle_path /mfe/help/* {
+        reverse_proxy localhost:5103
+    }
+    handle_path /mfe/mechanics/* {
+        reverse_proxy localhost:5104
+    }
+    handle_path /mfe/garage/* {
+        reverse_proxy localhost:5105
+    }
+    handle_path /mfe/marketplace/* {
+        reverse_proxy localhost:5106
+    }
+    handle /api/* {
+        reverse_proxy localhost:4100
+    }
+    handle {
+        reverse_proxy localhost:5100
+    }
+}
+

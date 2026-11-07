@@ -29,6 +29,7 @@ services:
     environment:
       NODE_ENV: production
       PORT: 4000
+      CORS_ORIGINS: ${CORS_ORIGINS:-https://ridersclub.in,https://www.ridersclub.in,https://staging.ridersclub.in,http://localhost:5000}
       DATABASE_URL: postgresql://${POSTGRES_USER:-ridersclub}:${POSTGRES_PASSWORD:-ridersclub_dev_password}@postgres:5432/${POSTGRES_DB:-ridersclub_db}?schema=public
     ports:
       - "4000:4000"
@@ -39,13 +40,13 @@ services:
       dockerfile: infrastructure/docker/Dockerfile.web
       args:
         APP_NAME: shell
-        VITE_API_BASE_URL: ${PUBLIC_HOST:-http://localhost}:4000/api/v1
-        VITE_COMMUNITY_REMOTE_URL: ${PUBLIC_HOST:-http://localhost}:5001/remoteEntry.js
-        VITE_RIDES_REMOTE_URL: ${PUBLIC_HOST:-http://localhost}:5002/remoteEntry.js
-        VITE_HELP_REMOTE_URL: ${PUBLIC_HOST:-http://localhost}:5003/remoteEntry.js
-        VITE_MECHANICS_REMOTE_URL: ${PUBLIC_HOST:-http://localhost}:5004/remoteEntry.js
-        VITE_GARAGE_REMOTE_URL: ${PUBLIC_HOST:-http://localhost}:5005/remoteEntry.js
-        VITE_MARKETPLACE_REMOTE_URL: ${PUBLIC_HOST:-http://localhost}:5006/remoteEntry.js
+        VITE_API_BASE_URL: ${PUBLIC_HOST:-https://ridersclub.in}/api/v1
+        VITE_COMMUNITY_REMOTE_URL: ${PUBLIC_HOST:-https://ridersclub.in}/mfe/community/remoteEntry.js
+        VITE_RIDES_REMOTE_URL: ${PUBLIC_HOST:-https://ridersclub.in}/mfe/rides/remoteEntry.js
+        VITE_HELP_REMOTE_URL: ${PUBLIC_HOST:-https://ridersclub.in}/mfe/help/remoteEntry.js
+        VITE_MECHANICS_REMOTE_URL: ${PUBLIC_HOST:-https://ridersclub.in}/mfe/mechanics/remoteEntry.js
+        VITE_GARAGE_REMOTE_URL: ${PUBLIC_HOST:-https://ridersclub.in}/mfe/garage/remoteEntry.js
+        VITE_MARKETPLACE_REMOTE_URL: ${PUBLIC_HOST:-https://ridersclub.in}/mfe/marketplace/remoteEntry.js
     container_name: ridersclub-shell-prod
     restart: unless-stopped
     depends_on:
@@ -65,7 +66,7 @@ services:
       dockerfile: infrastructure/docker/Dockerfile.web
       args:
         APP_NAME: community
-        VITE_API_BASE_URL: ${PUBLIC_HOST:-http://localhost}:4000/api/v1
+        VITE_API_BASE_URL: ${PUBLIC_HOST:-https://ridersclub.in}/api/v1
     container_name: ridersclub-community-prod
     restart: unless-stopped
     ports:
@@ -77,7 +78,7 @@ services:
       dockerfile: infrastructure/docker/Dockerfile.web
       args:
         APP_NAME: rides
-        VITE_API_BASE_URL: ${PUBLIC_HOST:-http://localhost}:4000/api/v1
+        VITE_API_BASE_URL: ${PUBLIC_HOST:-https://ridersclub.in}/api/v1
     container_name: ridersclub-rides-prod
     restart: unless-stopped
     ports:
@@ -89,7 +90,7 @@ services:
       dockerfile: infrastructure/docker/Dockerfile.web
       args:
         APP_NAME: help
-        VITE_API_BASE_URL: ${PUBLIC_HOST:-http://localhost}:4000/api/v1
+        VITE_API_BASE_URL: ${PUBLIC_HOST:-https://ridersclub.in}/api/v1
     container_name: ridersclub-help-prod
     restart: unless-stopped
     ports:
@@ -101,7 +102,7 @@ services:
       dockerfile: infrastructure/docker/Dockerfile.web
       args:
         APP_NAME: mechanics
-        VITE_API_BASE_URL: ${PUBLIC_HOST:-http://localhost}:4000/api/v1
+        VITE_API_BASE_URL: ${PUBLIC_HOST:-https://ridersclub.in}/api/v1
     container_name: ridersclub-mechanics-prod
     restart: unless-stopped
     ports:
@@ -113,7 +114,7 @@ services:
       dockerfile: infrastructure/docker/Dockerfile.web
       args:
         APP_NAME: garage
-        VITE_API_BASE_URL: ${PUBLIC_HOST:-http://localhost}:4000/api/v1
+        VITE_API_BASE_URL: ${PUBLIC_HOST:-https://ridersclub.in}/api/v1
     container_name: ridersclub-garage-prod
     restart: unless-stopped
     ports:
@@ -125,7 +126,7 @@ services:
       dockerfile: infrastructure/docker/Dockerfile.web
       args:
         APP_NAME: marketplace
-        VITE_API_BASE_URL: ${PUBLIC_HOST:-http://localhost}:4000/api/v1
+        VITE_API_BASE_URL: ${PUBLIC_HOST:-https://ridersclub.in}/api/v1
     container_name: ridersclub-marketplace-prod
     restart: unless-stopped
     ports:
@@ -133,5 +134,3 @@ services:
 
 volumes:
   ridersclub_pgdata_prod:
-    name: ridersclub_pgdata_prod
-
