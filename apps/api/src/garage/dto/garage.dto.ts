@@ -134,7 +134,7 @@ export class CreateServiceRecordDto {
   })
   @IsString()
   @IsNotEmpty()
-  @MinLength(5)
+  @MinLength(2)
   @MaxLength(600)
   description!: string;
 

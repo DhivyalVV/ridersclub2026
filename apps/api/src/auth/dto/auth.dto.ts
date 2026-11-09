@@ -19,7 +19,7 @@ export class RequestOtpDto {
   @Matches(/^\+?[1-9]\d{9,14}$/, {
     message: 'Phone number must be a valid 10 to 15 digit phone number (e.g., +919845012345).',
   })
-  phoneNumber: string;
+  phoneNumber!: string;
 }
 
 export class VerifyOtpDto {
@@ -29,13 +29,13 @@ export class VerifyOtpDto {
   @Matches(/^\+?[1-9]\d{9,14}$/, {
     message: 'Phone number must be a valid 10 to 15 digit phone number.',
   })
-  phoneNumber: string;
+  phoneNumber!: string;
 
   @ApiProperty({ example: '123456', description: '6-digit numeric OTP code' })
   @IsString()
   @Length(6, 6)
   @Matches(/^\d{6}$/, { message: 'OTP code must be a 6-digit number.' })
-  code: string;
+  code!: string;
 
   @ApiPropertyOptional({ example: 'Aarav Sharma' })
   @IsOptional()
@@ -45,24 +45,41 @@ export class VerifyOtpDto {
 }
 
 export class GoogleSignInDto {
-  @ApiProperty({
-    example: 'google-oauth-sub-10928374',
-    description: 'Verified Google Subject ID or OAuth token identifier',
+  @ApiPropertyOptional({
+    description: 'Google OAuth 2.0 ID token (JWT credential) returned by Google Identity Services popup',
   })
+  @IsOptional()
   @IsString()
-  @IsNotEmpty()
+  @MaxLength(4096)
+  googleIdToken?: string;
+
+  @ApiPropertyOptional({
+    description: 'Google OAuth 2.0 Access Token returned by Google account chooser popup',
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(4096)
+  googleAccessToken?: string;
+
+  @ApiPropertyOptional({
+    example: 'google-oauth-sub-10928374',
+    description: 'Verified Google Subject ID (used in automated test suites)',
+  })
+  @IsOptional()
+  @IsString()
   @MaxLength(128)
-  googleSubjectId: string;
+  googleSubjectId?: string;
 
-  @ApiProperty({ example: 'rider@ridersclub.dev' })
+  @ApiPropertyOptional({ example: 'rider@ridersclub.dev' })
+  @IsOptional()
   @IsEmail()
-  email: string;
+  email?: string;
 
-  @ApiProperty({ example: 'Aarav Sharma' })
+  @ApiPropertyOptional({ example: 'Aarav Sharma' })
+  @IsOptional()
   @IsString()
-  @IsNotEmpty()
   @MaxLength(60)
-  displayName: string;
+  displayName?: string;
 
   @ApiPropertyOptional({ example: 'https://images.unsplash.com/photo-avatar' })
   @IsOptional()
@@ -76,12 +93,11 @@ export class LinkPhoneDto {
   @IsString()
   @IsNotEmpty()
   @Matches(/^\+?[1-9]\d{9,14}$/)
-  phoneNumber: string;
+  phoneNumber!: string;
 
   @ApiProperty({ example: '123456' })
   @IsString()
   @Length(6, 6)
   @Matches(/^\d{6}$/)
-  code: string;
+  code!: string;
 }
-

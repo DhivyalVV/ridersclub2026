@@ -27,7 +27,7 @@ export class RegisterMechanicDto {
   })
   @IsString()
   @IsNotEmpty()
-  @MinLength(10)
+  @MinLength(2)
   @MaxLength(800)
   description!: string;
 
@@ -44,7 +44,7 @@ export class RegisterMechanicDto {
   @ApiProperty({ example: '42 Indiranagar 100ft Road, HAL 2nd Stage' })
   @IsString()
   @IsNotEmpty()
-  @MinLength(5)
+  @MinLength(2)
   @MaxLength(200)
   address!: string;
 
@@ -82,7 +82,7 @@ export class UpdateMechanicDto {
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()
-  @MinLength(10)
+  @MinLength(2)
   @MaxLength(800)
   description?: string;
 
@@ -97,7 +97,7 @@ export class UpdateMechanicDto {
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()
-  @MinLength(5)
+  @MinLength(2)
   @MaxLength(200)
   address?: string;
 

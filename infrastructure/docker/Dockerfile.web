@@ -16,6 +16,7 @@ RUN pnpm --filter @ridersclub/types build && \
     pnpm --filter @ridersclub/ui build
 
 ARG APP_NAME=shell
+ARG VITE_GOOGLE_CLIENT_ID=""
 ARG VITE_API_BASE_URL=http://localhost:4000/api/v1
 ARG VITE_COMMUNITY_REMOTE_URL=http://localhost:5001/remoteEntry.js
 ARG VITE_RIDES_REMOTE_URL=http://localhost:5002/remoteEntry.js
@@ -24,6 +25,7 @@ ARG VITE_MECHANICS_REMOTE_URL=http://localhost:5004/remoteEntry.js
 ARG VITE_GARAGE_REMOTE_URL=http://localhost:5005/remoteEntry.js
 ARG VITE_MARKETPLACE_REMOTE_URL=http://localhost:5006/remoteEntry.js
 
+ENV VITE_GOOGLE_CLIENT_ID=${VITE_GOOGLE_CLIENT_ID}
 ENV VITE_API_BASE_URL=${VITE_API_BASE_URL}
 ENV VITE_COMMUNITY_REMOTE_URL=${VITE_COMMUNITY_REMOTE_URL}
 ENV VITE_RIDES_REMOTE_URL=${VITE_RIDES_REMOTE_URL}

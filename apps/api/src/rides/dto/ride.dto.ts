@@ -15,7 +15,7 @@ import { RideStatus } from '@ridersclub/types';
 export class CreateRideDto {
   @ApiProperty({ example: 'Nandi Hills Sunrise Breakfast Run' })
   @IsString()
-  @MinLength(5)
+  @MinLength(2)
   @MaxLength(140)
   title!: string;
 
@@ -24,7 +24,7 @@ export class CreateRideDto {
       'Disciplined staggered formation ride departing Hebbal flyover at 05:30 AM. Mandatory full riding gear (ECE helmet, gloves, jacket, boots).',
   })
   @IsString()
-  @MinLength(15)
+  @MinLength(2)
   @MaxLength(1500)
   description!: string;
 
@@ -55,14 +55,14 @@ export class UpdateRideDto {
   @ApiPropertyOptional({ example: 'Updated Nandi Hills Sunrise Run' })
   @IsOptional()
   @IsString()
-  @MinLength(5)
+  @MinLength(2)
   @MaxLength(140)
   title?: string;
 
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()
-  @MinLength(15)
+  @MinLength(2)
   @MaxLength(1500)
   description?: string;
 

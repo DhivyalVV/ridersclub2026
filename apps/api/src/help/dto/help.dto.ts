@@ -24,7 +24,7 @@ export class CreateHelpRequestDto {
   })
   @IsString()
   @IsNotEmpty()
-  @MinLength(10)
+  @MinLength(2)
   @MaxLength(600)
   description!: string;
 

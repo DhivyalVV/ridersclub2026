@@ -84,7 +84,7 @@ export class CreateMarketplaceListingDto {
   })
   @IsString()
   @IsNotEmpty()
-  @MinLength(10)
+  @MinLength(2)
   @MaxLength(1200)
   description!: string;
 
@@ -143,7 +143,7 @@ export class UpdateMarketplaceListingDto {
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()
-  @MinLength(10)
+  @MinLength(2)
   @MaxLength(1200)
   description?: string;
 

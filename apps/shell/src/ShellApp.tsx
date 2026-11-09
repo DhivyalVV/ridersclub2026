@@ -241,6 +241,17 @@ export function ShellApp({
       return;
     }
     if (accessToken.startsWith('local-session-')) {
+      setAuthenticatedUser(null);
+      setAccessToken(null);
+      try {
+        window.localStorage.removeItem(ACCESS_TOKEN_STORAGE_KEY);
+        window.localStorage.removeItem(AUTH_USER_STORAGE_KEY);
+        window.localStorage.removeItem(LEGACY_TOKEN_STORAGE_KEY);
+        window.localStorage.removeItem(LEGACY_USER_STORAGE_KEY);
+        window.localStorage.removeItem('ridersclub.accessToken');
+      } catch {
+        // ignore
+      }
       return;
     }
 
@@ -296,7 +307,7 @@ export function ShellApp({
 
   // Connect to real-time 1:1 messaging SSE stream when authenticated
   React.useEffect(() => {
-    if (!accessToken || typeof window.EventSource === 'undefined') {
+    if (!accessToken || accessToken.startsWith('local-session-') || typeof window.EventSource === 'undefined') {
       return;
     }
 
@@ -857,7 +868,7 @@ export function ShellApp({
         ) : null}
 
         {/* Active Route Viewport */}
-        <main id="main-content" tabIndex={-1} className="min-w-0 flex-1 focus:outline-none">
+        <main id="main-content" key={accessToken ?? "guest"} tabIndex={-1} className="min-w-0 flex-1 focus:outline-none">
           {!authenticatedUser ? (
             <div className="space-y-6">
               <div className="rounded-2xl bg-gradient-to-r from-primary-950 via-primary-900 to-primary-700 p-6 text-white shadow-md">

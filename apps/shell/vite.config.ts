@@ -3,7 +3,7 @@ import react from '@vitejs/plugin-react';
 import { federation } from '@module-federation/vite';
 
 export default defineConfig(({ mode }) => {
-  const env = loadEnv(mode, process.cwd(), '');
+  const env = { ...loadEnv(mode, '../..', ''), ...loadEnv(mode, process.cwd(), '') };
 
   const remotesConfig = {
     community: env.VITE_COMMUNITY_REMOTE_URL || 'http://localhost:5001/remoteEntry.js',
@@ -15,6 +15,7 @@ export default defineConfig(({ mode }) => {
   };
 
   return {
+    envDir: '../..',
     server: {
       port: 5000,
       strictPort: true,

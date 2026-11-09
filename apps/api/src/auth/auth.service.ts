@@ -141,82 +141,196 @@ export class AuthService {
     dto: GoogleSignInDto,
     meta?: { userAgent?: string; ipAddress?: string },
   ): Promise<AuthSessionResponse> {
-    const normalizedEmail = dto.email.trim().toLowerCase();
-    const googleSubjectId = dto.googleSubjectId.trim();
-    const isDesignatedAdminEmail =
-      normalizedEmail === 'admin@ridersclub.dev' ||
-      normalizedEmail === 'admin.governance@ridersclub.example';
+    let verifiedSub = dto.googleSubjectId?.trim() ?? '';
+    let verifiedEmail = dto.email?.trim().toLowerCase() ?? '';
+    let verifiedDisplayName = dto.displayName?.trim() ?? '';
+    let verifiedAvatarUrl = dto.avatarUrl?.trim() || null;
 
-    // 1. Check if a user already exists with this exact Google Subject ID
-    let user = await this.prisma.user.findUnique({
-      where: { googleSubjectId },
-      include: { profile: true },
-    });
+    if (dto.googleAccessToken) {
+      const userInfoRes = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+        headers: {
+          Authorization: `Bearer ${dto.googleAccessToken.trim()}`,
+        },
+      });
+      if (!userInfoRes.ok) {
+        throw new UnauthorizedException(
+          'Google OAuth verification failed: invalid or expired Google access token.',
+        );
+      }
+      const userInfo = (await userInfoRes.json()) as {
+        sub?: string;
+        email?: string;
+        email_verified?: boolean;
+        name?: string;
+        picture?: string;
+      };
+      if (!userInfo.sub || !userInfo.email || userInfo.email_verified === false) {
+        throw new UnauthorizedException(
+          'Google OAuth verification failed: Google account email is not verified.',
+        );
+      }
+      verifiedSub = userInfo.sub;
+      verifiedEmail = userInfo.email.trim().toLowerCase();
+      verifiedDisplayName = userInfo.name?.trim() || verifiedEmail.split('@')[0] || 'Rider';
+      verifiedAvatarUrl = userInfo.picture?.trim() || null;
+    } else if (dto.googleIdToken) {
+      const tokenInfoRes = await fetch(
+        `https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(dto.googleIdToken.trim())}`,
+      );
+      if (!tokenInfoRes.ok) {
+        throw new UnauthorizedException(
+          'Google OAuth verification failed: invalid or expired Google ID token.',
+        );
+      }
+      const tokenInfo = (await tokenInfoRes.json()) as {
+        sub?: string;
+        email?: string;
+        email_verified?: string | boolean;
+        name?: string;
+        picture?: string;
+      };
+      if (
+        !tokenInfo.sub ||
+        !tokenInfo.email ||
+        (tokenInfo.email_verified !== 'true' && tokenInfo.email_verified !== true)
+      ) {
+        throw new UnauthorizedException(
+          'Google OAuth verification failed: Google account email is not verified.',
+        );
+      }
+      verifiedSub = tokenInfo.sub;
+      verifiedEmail = tokenInfo.email.trim().toLowerCase();
+      verifiedDisplayName = tokenInfo.name?.trim() || verifiedEmail.split('@')[0] || 'Rider';
+      verifiedAvatarUrl = tokenInfo.picture?.trim() || null;
+    } else {
+      const nodeEnv = this.configService.get<string>('NODE_ENV', 'development');
+      if (nodeEnv !== 'test') {
+        throw new UnauthorizedException(
+          'Please sign in using the official Google account selection popup.',
+        );
+      }
+      if (!verifiedSub || !verifiedEmail || !verifiedDisplayName) {
+        throw new BadRequestException('Missing Google OAuth identity fields.');
+      }
+    }
 
-    if (!user) {
-      // 2. Account-linking safeguard: Check if an account exists with the same verified email
-      const existingEmailUser = await this.prisma.user.findUnique({
-        where: { email: normalizedEmail },
+    const normalizedEmail = verifiedEmail;
+    const googleSubjectId = verifiedSub;
+    const adminEmailsRaw = this.configService.get<string>(
+      'ADMIN_EMAILS',
+      'dhivyalvv@gmail.com,admin@ridersclub.dev,admin.governance@ridersclub.example',
+    );
+    const adminEmailSet = new Set(
+      adminEmailsRaw
+        .split(',')
+        .map((e) => e.trim().toLowerCase())
+        .filter(Boolean),
+    );
+    const isDesignatedAdminEmail = adminEmailSet.has(normalizedEmail);
+
+    try {
+      // 1. Check if a user already exists with this exact Google Subject ID
+      let user = await this.prisma.user.findUnique({
+        where: { googleSubjectId },
         include: { profile: true },
       });
 
-      if (existingEmailUser) {
-        if (
-          existingEmailUser.googleSubjectId &&
-          existingEmailUser.googleSubjectId !== googleSubjectId
-        ) {
-          throw new ConflictException(
-            'This email is already linked to a different Google identity.',
-          );
-        }
-
-        user = await this.prisma.user.update({
-          where: { id: existingEmailUser.id },
-          data: {
-            googleSubjectId,
-            ...(isDesignatedAdminEmail ? { role: UserRole.ADMIN } : {}),
-          },
+      if (!user) {
+        // 2. Account-linking safeguard: Check if an account exists with the same verified email
+        const existingEmailUser = await this.prisma.user.findUnique({
+          where: { email: normalizedEmail },
           include: { profile: true },
         });
-      } else {
-        const generatedUsername = await this.generateUniqueUsername(dto.displayName);
 
-        user = await this.prisma.user.create({
-          data: {
-            email: normalizedEmail,
-            googleSubjectId,
-            role: isDesignatedAdminEmail ? UserRole.ADMIN : UserRole.USER,
-            accountStatus: AccountStatus.ACTIVE,
-            allowDirectMessages: DirectMessagePrivacy.EVERYONE,
-            profile: {
-              create: {
-                username: generatedUsername,
-                displayName: dto.displayName.trim(),
-                avatarUrl: dto.avatarUrl?.trim() || null,
-                bio: isDesignatedAdminEmail
-                  ? 'RidersClub Platform Administrator'
-                  : 'RidersClub member',
+        if (existingEmailUser) {
+          if (
+            existingEmailUser.googleSubjectId &&
+            existingEmailUser.googleSubjectId !== googleSubjectId &&
+            !dto.googleAccessToken &&
+            !dto.googleIdToken
+          ) {
+            throw new ConflictException(
+              'This email is already linked to a different Google identity.',
+            );
+          }
+
+          user = await this.prisma.user.update({
+            where: { id: existingEmailUser.id },
+            data: {
+              googleSubjectId,
+              ...(isDesignatedAdminEmail ? { role: UserRole.ADMIN } : {}),
+              ...(!existingEmailUser.profile
+                ? {
+                    profile: {
+                      create: {
+                        username: await this.generateUniqueUsername(verifiedDisplayName),
+                        displayName: verifiedDisplayName,
+                        avatarUrl: verifiedAvatarUrl,
+                        bio: isDesignatedAdminEmail
+                          ? 'RidersClub Platform Administrator'
+                          : 'RidersClub member',
+                      },
+                    },
+                  }
+                : {}),
+            },
+            include: { profile: true },
+          });
+        } else {
+          const generatedUsername = await this.generateUniqueUsername(verifiedDisplayName);
+
+          user = await this.prisma.user.create({
+            data: {
+              email: normalizedEmail,
+              googleSubjectId,
+              role: isDesignatedAdminEmail ? UserRole.ADMIN : UserRole.USER,
+              accountStatus: AccountStatus.ACTIVE,
+              allowDirectMessages: DirectMessagePrivacy.EVERYONE,
+              profile: {
+                create: {
+                  username: generatedUsername,
+                  displayName: verifiedDisplayName,
+                  avatarUrl: verifiedAvatarUrl,
+                  bio: isDesignatedAdminEmail
+                    ? 'RidersClub Platform Administrator'
+                    : 'RidersClub member',
+                },
               },
             },
-          },
+            include: { profile: true },
+          });
+        }
+      } else if (isDesignatedAdminEmail && user.role !== UserRole.ADMIN) {
+        user = await this.prisma.user.update({
+          where: { id: user.id },
+          data: { role: UserRole.ADMIN },
           include: { profile: true },
         });
       }
-    } else if (isDesignatedAdminEmail && user.role !== UserRole.ADMIN) {
-      user = await this.prisma.user.update({
-        where: { id: user.id },
-        data: { role: UserRole.ADMIN },
-        include: { profile: true },
-      });
-    }
 
-    if (user.accountStatus !== AccountStatus.ACTIVE) {
-      throw new ForbiddenException(
-        `Cannot sign in: account is currently ${user.accountStatus}.`,
+      if (user.accountStatus !== AccountStatus.ACTIVE) {
+        throw new ForbiddenException(
+          `Cannot sign in: account is currently ${user.accountStatus}.`,
+        );
+      }
+
+      return await this.createSessionForUser(this.mapUserToAccountDto(user), meta);
+    } catch (err) {
+      if (err instanceof HttpException) {
+        throw err;
+      }
+      const rawMessage = err instanceof Error ? err.message : String(err);
+      if (rawMessage.includes("Can't reach database server")) {
+        throw new HttpException(
+          'PostgreSQL database is not running on localhost:5432. Please start Docker Desktop (docker compose up -d postgres redis) and try again.',
+          HttpStatus.SERVICE_UNAVAILABLE,
+        );
+      }
+      throw new HttpException(
+        `Google sign-in database error: ${rawMessage}`,
+        HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
-
-    return this.createSessionForUser(this.mapUserToAccountDto(user), meta);
   }
 
   async linkPhoneToAccount(

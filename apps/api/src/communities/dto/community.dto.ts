@@ -14,7 +14,7 @@ export class CreateCommunityDto {
       'Weekend trail rides, monsoon preparedness checklists, and technical terrain mentorship across Karnataka, Goa, and Maharashtra.',
   })
   @IsString()
-  @MinLength(15)
+  @MinLength(2)
   @MaxLength(600)
   description!: string;
 

@@ -104,16 +104,20 @@ const INITIAL_LISTINGS: MarketplaceListingItem[] = [
   },
 ];
 
-const API_BASE_URL = 'http://localhost:4000/api';
+const API_BASE_URL = ((import.meta as unknown as { env?: Record<string, string | undefined> }).env?.VITE_API_BASE_URL) || 'http://localhost:4000/api/v1';
 const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
 const MAX_PHOTO_BYTES = 5 * 1024 * 1024; // 5 MB
 
 function getStoredToken(): string | null {
   try {
-    return (
+    const token =
       window.localStorage.getItem('ridersclub:access_token') ??
-      window.localStorage.getItem('ridersclub.accessToken')
-    );
+      window.localStorage.getItem('ridersclub_auth_token') ??
+      window.localStorage.getItem('ridersclub.accessToken');
+    if (!token || token.startsWith('local-session-')) {
+      return null;
+    }
+    return token;
   } catch {
     return null;
   }
