@@ -11,7 +11,7 @@ import {
 export class CreateBlogDto {
   @ApiProperty({ example: 'High-Altitude Braking & Clutch Care Before a Spiti Circuit' })
   @IsString()
-  @MinLength(5)
+  @MinLength(2)
   @MaxLength(160)
   title!: string;
 
@@ -20,7 +20,7 @@ export class CreateBlogDto {
       'How DOT 4 boiling points, braided steel lines, and clutch free-play adjustments prevent fade on steep mountain descents.',
   })
   @IsString()
-  @MinLength(15)
+  @MinLength(2)
   @MaxLength(350)
   excerpt!: string;
 
@@ -29,7 +29,7 @@ export class CreateBlogDto {
       'Before ascending above 3,500 meters, inspect your brake fluid moisture content and verify clutch cable free-play...',
   })
   @IsString()
-  @MinLength(30)
+  @MinLength(2)
   @MaxLength(25000)
   content!: string;
 
@@ -45,21 +45,21 @@ export class UpdateBlogDto {
   @ApiPropertyOptional({ example: 'Updated High-Altitude Braking & Clutch Guide' })
   @IsOptional()
   @IsString()
-  @MinLength(5)
+  @MinLength(2)
   @MaxLength(160)
   title?: string;
 
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()
-  @MinLength(15)
+  @MinLength(2)
   @MaxLength(350)
   excerpt?: string;
 
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()
-  @MinLength(30)
+  @MinLength(2)
   @MaxLength(25000)
   content?: string;
 

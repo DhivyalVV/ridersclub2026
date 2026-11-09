@@ -51,8 +51,7 @@ export interface CommunityRemoteAppProps {
   initialSection?: 'communities' | 'blogs';
 }
 
-const API_BASE_URL = 'http://localhost:4000/api/v1';
-const AUTH_STORAGE_KEY = 'ridersclub_auth_token';
+const API_BASE_URL = ((import.meta as unknown as { env?: Record<string, string | undefined> }).env?.VITE_API_BASE_URL) || 'http://localhost:4000/api/v1';
 const AUTH_USER_STORAGE_KEY = 'ridersclub_auth_user';
 
 const INITIAL_COMMUNITIES: CommunityItem[] = [
@@ -203,7 +202,7 @@ const INITIAL_BLOGS: BlogPostItem[] = [
 
 function getStoredUser(): AuthenticatedUserAccount | null {
   try {
-    const raw = window.localStorage.getItem(AUTH_USER_STORAGE_KEY);
+    const raw = window.localStorage.getItem('ridersclub:auth_user') ?? window.localStorage.getItem(AUTH_USER_STORAGE_KEY);
     return raw ? (JSON.parse(raw) as AuthenticatedUserAccount) : null;
   } catch {
     return null;
@@ -212,7 +211,14 @@ function getStoredUser(): AuthenticatedUserAccount | null {
 
 function getStoredToken(): string | null {
   try {
-    return window.localStorage.getItem(AUTH_STORAGE_KEY);
+    const token =
+      window.localStorage.getItem('ridersclub:access_token') ??
+      window.localStorage.getItem('ridersclub_auth_token') ??
+      window.localStorage.getItem('ridersclub.accessToken');
+    if (!token || token.startsWith('local-session-')) {
+      return null;
+    }
+    return token;
   } catch {
     return null;
   }

@@ -12,8 +12,13 @@ import { AccountStatus, UserRole, type AuthenticatedUserAccount } from '@ridersc
 import { AuthService } from '../auth.service';
 import { TokenService } from '../token.service';
 
+export type AuthenticatedUserWithSub = AuthenticatedUserAccount & {
+  sub: string;
+  sessionId: string;
+};
+
 export interface AuthenticatedRequest extends Request {
-  user?: AuthenticatedUserAccount;
+  user?: AuthenticatedUserWithSub;
   sessionId?: string;
 }
 
@@ -65,7 +70,11 @@ export class JwtAuthGuard implements CanActivate {
       );
     }
 
-    req.user = user;
+    req.user = {
+      ...user,
+      sub: user.id,
+      sessionId: payload.sessionId,
+    };
     req.sessionId = payload.sessionId;
     return true;
   }
@@ -93,7 +102,11 @@ export class OptionalJwtAuthGuard implements CanActivate {
         payload.sessionId,
       );
       if (user.accountStatus === AccountStatus.ACTIVE) {
-        req.user = user;
+        req.user = {
+          ...user,
+          sub: user.id,
+          sessionId: payload.sessionId,
+        };
         req.sessionId = payload.sessionId;
       }
     } catch {
@@ -139,9 +152,8 @@ export class RolesGuard implements CanActivate {
 }
 
 export const CurrentUser = createParamDecorator(
-  (_data: unknown, ctx: ExecutionContext): AuthenticatedUserAccount | undefined => {
+  (_data: unknown, ctx: ExecutionContext): AuthenticatedUserWithSub | undefined => {
     const request = ctx.switchToHttp().getRequest<AuthenticatedRequest>();
     return request.user;
   },
 );
-

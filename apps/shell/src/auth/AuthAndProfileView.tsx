@@ -13,9 +13,7 @@ import {
   Users,
 } from 'lucide-react';
 import {
-  AccountStatus,
   DirectMessagePrivacy,
-  UserRole,
   type AuthenticatedUserAccount,
   type AuthSessionResponse,
   type OtpRequestResponse,
@@ -55,10 +53,6 @@ export function AuthAndProfileView({
   const [otpInput, setOtpInput] = React.useState('');
   const [displayNameInput, setDisplayNameInput] = React.useState('Dhivyal Rider');
   const [otpRequested, setOtpRequested] = React.useState<OtpRequestResponse | null>(null);
-
-  // Google OAuth Sign-In State
-  const [googleEmail, setGoogleEmail] = React.useState('dhivyal@ridersclub.dev');
-  const [googleName, setGoogleName] = React.useState('Dhivyal Rider');
 
   // Profile Editor State
   const [editDisplayName, setEditDisplayName] = React.useState('');
@@ -114,6 +108,29 @@ export function AuthAndProfileView({
   React.useEffect(() => {
     void loadDirectory();
   }, [loadDirectory]);
+
+  const googleClientId =
+    ((import.meta as unknown as { env?: Record<string, string | undefined> }).env
+      ?.VITE_GOOGLE_CLIENT_ID ?? '').trim() ||
+    '61740694709-eull2hmmm141ocln51v6po950v71npku.apps.googleusercontent.com';
+
+  React.useEffect(() => {
+    if (!googleClientId || currentUser || typeof document === 'undefined') {
+      return;
+    }
+
+    const existingScript = document.getElementById('google-gsi-client-script');
+    if (existingScript) {
+      return;
+    }
+
+    const script = document.createElement('script');
+    script.id = 'google-gsi-client-script';
+    script.src = 'https://accounts.google.com/gsi/client';
+    script.async = true;
+    script.defer = true;
+    document.head.appendChild(script);
+  }, [googleClientId, currentUser]);
 
   async function handleRequestOtp(e: React.FormEvent): Promise<void> {
     e.preventDefault();
@@ -185,86 +202,78 @@ export function AuthAndProfileView({
     }
   }
 
-  async function handleGoogleSignIn(e: React.FormEvent): Promise<void> {
-    e.preventDefault();
+  function handleGoogleSignIn(): void {
     setErrorMessage(null);
     setStatusMessage(null);
-    setIsSubmitting(true);
 
-    try {
-      const normalizedEmail = googleEmail.trim().toLowerCase();
-      const googleSubjectId = `google-sub-${normalizedEmail.replace(/[^a-z0-9]/g, '-')}`;
-      const res = await fetch(`${apiBaseUrl}/auth/google`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({
-          googleSubjectId,
-          email: googleEmail,
-          displayName: googleName,
-        }),
-      });
-
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(
-          Array.isArray(data.message) ? data.message.join(', ') : data.message || 'Google sign-in failed',
-        );
-      }
-
-      const session = data as AuthSessionResponse;
-      onSessionEstablished(session);
-      setStatusMessage(`Signed in via Google OAuth as ${session.user.profile.displayName} (${session.user.role})`);
-      void loadDirectory();
-    } catch (err) {
-      if (err instanceof TypeError) {
-        const normalizedEmail = googleEmail.trim().toLowerCase();
-        const isAdminEmail =
-          normalizedEmail === 'admin@ridersclub.dev' ||
-          normalizedEmail === 'admin.governance@ridersclub.example';
-        const fallbackRole = isAdminEmail ? UserRole.ADMIN : UserRole.USER;
-        const fallbackUsername =
-          googleName
-            .trim()
-            .toLowerCase()
-            .replace(/[^a-z0-9]+/g, '_') || 'rider_user';
-        const fallbackSession: AuthSessionResponse = {
-          accessToken: `local-session-${Date.now()}`,
-          expiresAt: new Date(Date.now() + 3600_000).toISOString(),
-          user: {
-            id: isAdminEmail ? 'user-admin-dev' : 'user-rider-dev',
-            email: normalizedEmail,
-            phoneNumber: null,
-            hasGoogleLinked: true,
-            role: fallbackRole,
-            accountStatus: AccountStatus.ACTIVE,
-            allowDirectMessages: DirectMessagePrivacy.EVERYONE,
-            profile: {
-              id: isAdminEmail ? 'prof-admin-dev' : 'prof-rider-dev',
-              userId: isAdminEmail ? 'user-admin-dev' : 'user-rider-dev',
-              username: fallbackUsername,
-              displayName: googleName.trim() || 'Dhivyal Rider',
-              bio: isAdminEmail
-                ? 'RidersClub Platform Administrator'
-                : 'RidersClub Member • Touring & Garage Enthusiast',
-              avatarUrl: null,
-              city: 'Bengaluru',
-              showPhone: false,
-              createdAt: new Date().toISOString(),
-              updatedAt: new Date().toISOString(),
-            },
-          },
+    const g = (
+      window as unknown as {
+        google?: {
+          accounts?: {
+            oauth2?: {
+              initTokenClient: (cfg: {
+                client_id: string;
+                scope: string;
+                prompt?: string;
+                callback: (resp: { access_token?: string; error?: string }) => void;
+              }) => { requestAccessToken: () => void };
+            };
+          };
         };
-        onSessionEstablished(fallbackSession);
-        setStatusMessage(
-          `Signed in as ${fallbackSession.user.profile.displayName} (${fallbackSession.user.role})`,
-        );
-        return;
       }
-      setErrorMessage(err instanceof Error ? err.message : 'Google sign-in failed');
-    } finally {
-      setIsSubmitting(false);
+    ).google;
+
+    if (!g?.accounts?.oauth2) {
+      setErrorMessage(
+        'Google Sign-In popup is still initializing. Please wait a second and click Sign In with Google again.',
+      );
+      return;
     }
+
+    const tokenClient = g.accounts.oauth2.initTokenClient({
+      client_id: googleClientId,
+      scope: 'openid email profile',
+      prompt: 'select_account',
+      callback: async (tokenResponse) => {
+        if (tokenResponse.error || !tokenResponse.access_token) {
+          setErrorMessage('Google account selection was cancelled or failed.');
+          return;
+        }
+        setIsSubmitting(true);
+        try {
+          const res = await fetch(`${apiBaseUrl}/auth/google`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({
+              googleAccessToken: tokenResponse.access_token,
+            }),
+          });
+
+          const data = await res.json();
+          if (!res.ok) {
+            throw new Error(
+              Array.isArray(data.message)
+                ? data.message.join(', ')
+                : data.message || 'Google sign-in failed',
+            );
+          }
+
+          const session = data as AuthSessionResponse;
+          onSessionEstablished(session);
+          setStatusMessage(
+            `Signed in via Google OAuth as ${session.user.profile.displayName} (${session.user.role})`,
+          );
+          void loadDirectory();
+        } catch (err) {
+          setErrorMessage(err instanceof Error ? err.message : 'Google sign-in failed');
+        } finally {
+          setIsSubmitting(false);
+        }
+      },
+    });
+
+    tokenClient.requestAccessToken();
   }
 
   async function handleSaveProfile(e: React.FormEvent): Promise<void> {
@@ -484,87 +493,26 @@ export function AuthAndProfileView({
                   <Chrome className="h-3 w-3" aria-hidden="true" />
                   Google OAuth 2.0
                 </Badge>
-                <Badge variant="outline">Account-Linking Safeguards</Badge>
+                <Badge variant="outline">Verified Google Account</Badge>
               </div>
               <CardTitle className="mt-2 text-xl">Continue with Google</CardTitle>
               <CardDescription>
-                Sign in with your Google identity. Automatically links to matching verified email
-                accounts while preventing subject-ID hijacking.
+                Click below to open the Google account chooser popup. Your selected Google account
+                is verified with Google before signing you in.
               </CardDescription>
             </CardHeader>
 
             <CardContent className="space-y-4">
-              <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
-                <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
-                  Quick Account Preset (Select Role to Test)
-                </p>
-                <div className="mt-2 flex flex-wrap gap-2">
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant={googleEmail === 'dhivyal@ridersclub.dev' ? 'default' : 'outline'}
-                    onClick={() => {
-                      setGoogleEmail('dhivyal@ridersclub.dev');
-                      setGoogleName('Dhivyal Rider');
-                    }}
-                  >
-                    Normal Rider (USER)
-                  </Button>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant={googleEmail === 'admin@ridersclub.dev' ? 'default' : 'outline'}
-                    onClick={() => {
-                      setGoogleEmail('admin@ridersclub.dev');
-                      setGoogleName('RidersClub Admin');
-                    }}
-                  >
-                    Platform Admin (ADMIN)
-                  </Button>
-                </div>
-              </div>
-
-              <form onSubmit={handleGoogleSignIn} className="space-y-3">
-                <div>
-                  <label
-                    htmlFor="google-email-input"
-                    className="block text-xs font-semibold text-slate-700"
-                  >
-                    Google Account Email
-                  </label>
-                  <input
-                    id="google-email-input"
-                    type="email"
-                    value={googleEmail}
-                    onChange={(e) => setGoogleEmail(e.target.value)}
-                    className="mt-1 h-10 w-full rounded-xl border border-slate-300 px-3 text-sm focus:border-primary-600 focus:outline-none focus:ring-2 focus:ring-primary-600/20"
-                  />
-                </div>
-                <div>
-                  <label
-                    htmlFor="google-name-input"
-                    className="block text-xs font-semibold text-slate-700"
-                  >
-                    Google Profile Name
-                  </label>
-                  <input
-                    id="google-name-input"
-                    type="text"
-                    value={googleName}
-                    onChange={(e) => setGoogleName(e.target.value)}
-                    className="mt-1 h-10 w-full rounded-xl border border-slate-300 px-3 text-sm focus:border-primary-600 focus:outline-none focus:ring-2 focus:ring-primary-600/20"
-                  />
-                </div>
-                <Button
-                  type="submit"
-                  variant="outline"
-                  disabled={isSubmitting}
-                  className="w-full"
-                >
-                  <Chrome className="h-4 w-4 text-primary-600" aria-hidden="true" />
-                  Sign In with Google
-                </Button>
-              </form>
+              <Button
+                type="button"
+                variant="outline"
+                disabled={isSubmitting}
+                onClick={handleGoogleSignIn}
+                className="w-full"
+              >
+                <Chrome className="h-4 w-4 text-primary-600" aria-hidden="true" />
+                Sign In with Google
+              </Button>
             </CardContent>
           </Card>
         </div>
@@ -828,4 +776,3 @@ export function AuthAndProfileView({
     </section>
   );
 }
-

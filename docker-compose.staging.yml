@@ -40,6 +40,7 @@ services:
       dockerfile: infrastructure/docker/Dockerfile.web
       args:
         APP_NAME: shell
+        VITE_GOOGLE_CLIENT_ID: ${VITE_GOOGLE_CLIENT_ID:-61740694709-eull2hmmm141ocln51v6po950v71npku.apps.googleusercontent.com}
         VITE_API_BASE_URL: ${PUBLIC_HOST:-https://staging.ridersclub.in}/api/v1
         VITE_COMMUNITY_REMOTE_URL: ${PUBLIC_HOST:-https://staging.ridersclub.in}/mfe/community/remoteEntry.js
         VITE_RIDES_REMOTE_URL: ${PUBLIC_HOST:-https://staging.ridersclub.in}/mfe/rides/remoteEntry.js

@@ -118,14 +118,18 @@ const INITIAL_VEHICLES: GarageVehicleItem[] = [
   },
 ];
 
-const API_BASE_URL = 'http://localhost:4000/api';
+const API_BASE_URL = ((import.meta as unknown as { env?: Record<string, string | undefined> }).env?.VITE_API_BASE_URL) || 'http://localhost:4000/api/v1';
 
 function getStoredToken(): string | null {
   try {
-    return (
+    const token =
       window.localStorage.getItem('ridersclub:access_token') ??
-      window.localStorage.getItem('ridersclub.accessToken')
-    );
+      window.localStorage.getItem('ridersclub_auth_token') ??
+      window.localStorage.getItem('ridersclub.accessToken');
+    if (!token || token.startsWith('local-session-')) {
+      return null;
+    }
+    return token;
   } catch {
     return null;
   }
