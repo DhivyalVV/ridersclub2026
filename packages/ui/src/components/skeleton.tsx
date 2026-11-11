@@ -28,10 +28,7 @@ export function RemoteLoadingState({ remoteName }: RemoteLoadingStateProps): Rea
     >
       <Loader2 className="h-8 w-8 animate-spin text-primary-600" aria-hidden="true" />
       <p className="mt-3 text-sm font-medium text-slate-800">
-        Loading {remoteName} module...
-      </p>
-      <p className="mt-1 text-xs text-slate-500">
-        Fetching federated micro-frontend bundle
+        Loading {remoteName}...
       </p>
       <div className="mt-6 grid w-full max-w-md grid-cols-2 gap-3">
         <Skeleton className="h-20 w-full" />

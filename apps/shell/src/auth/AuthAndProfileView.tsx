@@ -1,23 +1,19 @@
 import * as React from 'react';
 import {
   CheckCircle2,
-  Chrome,
   KeyRound,
   Link2,
   LogOut,
   Phone,
   Save,
   Shield,
-  Smartphone,
   UserCheck,
-  Users,
 } from 'lucide-react';
 import {
   DirectMessagePrivacy,
   type AuthenticatedUserAccount,
   type AuthSessionResponse,
   type OtpRequestResponse,
-  type PublicUserSummary,
 } from '@ridersclub/types';
 import {
   Badge,
@@ -25,10 +21,8 @@ import {
   Card,
   CardContent,
   CardDescription,
-  CardFooter,
   CardHeader,
   CardTitle,
-  UserProfileCard,
 } from '@ridersclub/ui';
 
 export interface AuthAndProfileViewProps {
@@ -49,9 +43,9 @@ export function AuthAndProfileView({
   onSignOut,
 }: AuthAndProfileViewProps): React.JSX.Element {
   // Phone OTP Sign-In State
-  const [phoneInput, setPhoneInput] = React.useState('+919845012345');
+  const [phoneInput, setPhoneInput] = React.useState('');
   const [otpInput, setOtpInput] = React.useState('');
-  const [displayNameInput, setDisplayNameInput] = React.useState('Dhivyal Rider');
+  const [displayNameInput, setDisplayNameInput] = React.useState('');
   const [otpRequested, setOtpRequested] = React.useState<OtpRequestResponse | null>(null);
 
   // Profile Editor State
@@ -65,12 +59,10 @@ export function AuthAndProfileView({
   );
 
   // Account Linking Phone State
-  const [linkPhoneInput, setLinkPhoneInput] = React.useState('+919845099887');
+  const [linkPhoneInput, setLinkPhoneInput] = React.useState('');
   const [linkOtpInput, setLinkOtpInput] = React.useState('');
   const [linkOtpPreview, setLinkOtpPreview] = React.useState<string | null>(null);
 
-  // Directory State
-  const [directoryProfiles, setDirectoryProfiles] = React.useState<PublicUserSummary[]>([]);
   const [statusMessage, setStatusMessage] = React.useState<string | null>(null);
   const [errorMessage, setErrorMessage] = React.useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
@@ -85,29 +77,6 @@ export function AuthAndProfileView({
       setEditDmPrivacy(currentUser.allowDirectMessages);
     }
   }, [currentUser]);
-
-  const loadDirectory = React.useCallback(async () => {
-    try {
-      const headers: Record<string, string> = {};
-      if (accessToken) {
-        headers.Authorization = `Bearer ${accessToken}`;
-      }
-      const res = await fetch(`${apiBaseUrl}/profiles`, {
-        headers,
-        credentials: 'include',
-      });
-      if (res.ok) {
-        const list = (await res.json()) as PublicUserSummary[];
-        setDirectoryProfiles(list);
-      }
-    } catch {
-      // Ignore directory load error if API is offline during unit tests
-    }
-  }, [apiBaseUrl, accessToken]);
-
-  React.useEffect(() => {
-    void loadDirectory();
-  }, [loadDirectory]);
 
   const googleClientId =
     ((import.meta as unknown as { env?: Record<string, string | undefined> }).env
@@ -194,7 +163,6 @@ export function AuthAndProfileView({
       onSessionEstablished(session);
       setOtpRequested(null);
       setStatusMessage(`Signed in as ${session.user.profile.displayName} (@${session.user.profile.username})`);
-      void loadDirectory();
     } catch (err) {
       setErrorMessage(err instanceof Error ? err.message : 'Failed to verify OTP');
     } finally {
@@ -264,7 +232,6 @@ export function AuthAndProfileView({
           setStatusMessage(
             `Signed in via Google OAuth as ${session.user.profile.displayName} (${session.user.role})`,
           );
-          void loadDirectory();
         } catch (err) {
           setErrorMessage(err instanceof Error ? err.message : 'Google sign-in failed');
         } finally {
@@ -309,8 +276,7 @@ export function AuthAndProfileView({
       }
 
       onUserUpdated(data as AuthenticatedUserAccount);
-      setStatusMessage('Profile and privacy settings saved to PostgreSQL.');
-      void loadDirectory();
+      setStatusMessage('Profile and privacy settings saved.');
     } catch (err) {
       setErrorMessage(err instanceof Error ? err.message : 'Profile update failed');
     } finally {
@@ -396,16 +362,9 @@ export function AuthAndProfileView({
           {/* Phone Number OTP Authentication Card */}
           <Card>
             <CardHeader>
-              <div className="flex items-center justify-between">
-                <Badge variant="default">
-                  <Smartphone className="h-3 w-3" aria-hidden="true" />
-                  Phone OTP Authentication
-                </Badge>
-                <Badge variant="outline">Rate-Limited & 5m Expiry</Badge>
-              </div>
-              <CardTitle className="mt-2 text-xl">Sign In with Phone OTP</CardTitle>
+              <CardTitle className="text-xl">Sign In with Phone OTP</CardTitle>
               <CardDescription>
-                Receive a 6-digit verification code. Maximum 3 requests per 10 minutes.
+                Receive a 6-digit verification code on your phone number to sign in.
               </CardDescription>
             </CardHeader>
 
@@ -423,8 +382,8 @@ export function AuthAndProfileView({
                     type="tel"
                     value={phoneInput}
                     onChange={(e) => setPhoneInput(e.target.value)}
-                    placeholder="+919845012345"
-                    className="mt-1 h-10 w-full rounded-xl border border-slate-300 px-3 text-sm focus:border-primary-600 focus:outline-none focus:ring-2 focus:ring-primary-600/20"
+                    placeholder="+911234567890"
+                    className="mt-1 h-10 w-full rounded-xl border border-slate-300 px-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-primary-600 focus:outline-none focus:ring-2 focus:ring-primary-600/20 focus:placeholder:text-transparent"
                   />
                 </div>
                 <div>
@@ -439,7 +398,8 @@ export function AuthAndProfileView({
                     type="text"
                     value={displayNameInput}
                     onChange={(e) => setDisplayNameInput(e.target.value)}
-                    className="mt-1 h-10 w-full rounded-xl border border-slate-300 px-3 text-sm focus:border-primary-600 focus:outline-none focus:ring-2 focus:ring-primary-600/20"
+                    placeholder="Rider name"
+                    className="mt-1 h-10 w-full rounded-xl border border-slate-300 px-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-primary-600 focus:outline-none focus:ring-2 focus:ring-primary-600/20 focus:placeholder:text-transparent"
                   />
                 </div>
                 <Button type="submit" disabled={isSubmitting} className="w-full">
@@ -488,29 +448,42 @@ export function AuthAndProfileView({
           {/* Google OAuth Sign-In Card */}
           <Card>
             <CardHeader>
-              <div className="flex items-center justify-between">
-                <Badge variant="secondary">
-                  <Chrome className="h-3 w-3" aria-hidden="true" />
-                  Google OAuth 2.0
-                </Badge>
-                <Badge variant="outline">Verified Google Account</Badge>
-              </div>
-              <CardTitle className="mt-2 text-xl">Continue with Google</CardTitle>
+              <CardTitle className="text-xl">Continue with Google</CardTitle>
               <CardDescription>
-                Click below to open the Google account chooser popup. Your selected Google account
-                is verified with Google before signing you in.
+                Click below to select your Google account and sign in to RidersClub.
               </CardDescription>
             </CardHeader>
 
             <CardContent className="space-y-4">
               <Button
                 type="button"
-                variant="outline"
                 disabled={isSubmitting}
                 onClick={handleGoogleSignIn}
                 className="w-full"
               >
-                <Chrome className="h-4 w-4 text-primary-600" aria-hidden="true" />
+                <span
+                  className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-white p-0.5 shadow-xs"
+                  aria-hidden="true"
+                >
+                  <svg viewBox="0 0 24 24" className="h-3.5 w-3.5">
+                    <path
+                      fill="#4285F4"
+                      d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+                    />
+                    <path
+                      fill="#34A853"
+                      d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+                    />
+                    <path
+                      fill="#FBBC05"
+                      d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
+                    />
+                    <path
+                      fill="#EA4335"
+                      d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
+                    />
+                  </svg>
+                </span>
                 Sign In with Google
               </Button>
             </CardContent>
@@ -530,8 +503,8 @@ export function AuthAndProfileView({
                   Edit Rider Profile & Privacy Settings
                 </CardTitle>
                 <CardDescription>
-                  Changes persist to PostgreSQL and update how your profile appears across Blogs,
-                  Communities, Rides, Help, Mechanics, and Marketplace.
+                  Update how your profile appears across Blogs, Communities, Rides, Help,
+                  Mechanics, and Marketplace.
                 </CardDescription>
               </div>
               <Button variant="outline" size="sm" onClick={onSignOut}>
@@ -700,7 +673,8 @@ export function AuthAndProfileView({
                     type="tel"
                     value={linkPhoneInput}
                     onChange={(e) => setLinkPhoneInput(e.target.value)}
-                    className="h-9 w-full rounded-lg border border-slate-300 px-2.5 text-xs"
+                    placeholder="+911234567890"
+                    className="h-9 w-full rounded-lg border border-slate-300 px-2.5 text-xs text-slate-900 placeholder:text-slate-400 focus:placeholder:text-transparent"
                   />
                   <Button
                     size="sm"
@@ -733,46 +707,6 @@ export function AuthAndProfileView({
           </Card>
         </div>
       )}
-
-      {/* Registered Riders Directory from PostgreSQL */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <Users className="h-5 w-5 text-primary-600" aria-hidden="true" />
-              Registered Riders in PostgreSQL ({directoryProfiles.length})
-            </CardTitle>
-            <Button size="sm" variant="ghost" onClick={() => void loadDirectory()}>
-              Refresh Directory
-            </Button>
-          </div>
-          <CardDescription>
-            Click any rider profile below to view their public profile or start a 1:1 conversation.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {directoryProfiles.length === 0 ? (
-            <p className="text-xs text-slate-500">
-              Sign in above with Phone OTP or Google OAuth to create your live rider profile in
-              PostgreSQL!
-            </p>
-          ) : (
-            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-              {directoryProfiles.map((rider) => (
-                <UserProfileCard
-                  key={rider.id}
-                  user={rider}
-                  contextLabel="Rider Directory"
-                />
-              ))}
-            </div>
-          )}
-        </CardContent>
-        <CardFooter className="text-xs text-slate-500">
-          Direct messaging buttons automatically disable when a rider sets privacy to NONE or when
-          a block is active.
-        </CardFooter>
-      </Card>
     </section>
   );
 }

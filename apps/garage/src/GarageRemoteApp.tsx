@@ -6,7 +6,6 @@ import {
   Gauge,
   Lock,
   Plus,
-  Sparkles,
   Trash2,
   Wrench,
 } from 'lucide-react';
@@ -448,13 +447,6 @@ export function GarageRemoteApp(): React.JSX.Element {
     >
       <div className="rounded-2xl bg-gradient-to-r from-primary-900 via-primary-800 to-primary-700 p-5 text-white shadow-md sm:p-7">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="inline-flex items-center gap-2 rounded-full bg-white/15 px-3 py-1 text-xs font-medium backdrop-blur-sm">
-            <Sparkles
-              className="h-3.5 w-3.5 text-primary-200"
-              aria-hidden="true"
-            />
-            <span>Federated Remote • @ridersclub/garage (:5005)</span>
-          </div>
           <Badge
             variant="verified"
             className="border-none bg-emerald-100 text-emerald-950"
