@@ -159,7 +159,7 @@ describe('ShellApp host micro-frontend & Phase 4 multi-remote orchestration', ()
 
     // Error boundary catches the broken Rides remote
     expect(
-      screen.getByText(/Rides \(@ridersclub\/rides\) Micro-Frontend Unavailable/i),
+      screen.getByText(/Group Rides Micro-Frontend Unavailable/i),
     ).toBeTruthy();
     expect(
       screen.getByText(/Failed to fetch http:\/\/localhost:5002\/remoteEntry.js/i),

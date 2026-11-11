@@ -8,15 +8,14 @@ import {
   useNavigate,
 } from 'react-router-dom';
 import {
-  Activity,
   AlertTriangle,
+  ArrowLeft,
   Ban,
   Bell,
   BookOpen,
   Car,
   Compass,
   Gauge,
-  LogIn,
   Menu,
   MessageSquare,
   Send,
@@ -31,7 +30,6 @@ import {
 import {
   buildConversationPairKey,
   UserRole,
-  type ApiHealthResponse,
   type AuthenticatedUserAccount,
   type AuthSessionResponse,
   type DirectConversationItem,
@@ -156,7 +154,6 @@ export function ShellApp({
     (import.meta.env?.VITE_API_BASE_URL as string | undefined) ||
     'http://localhost:4000/api/v1';
 
-  const [apiHealth, setApiHealth] = React.useState<ApiHealthResponse | null>(null);
   const [accessToken, setAccessToken] = React.useState<string | null>(() => {
     try {
       return window.localStorage.getItem(ACCESS_TOKEN_STORAGE_KEY);
@@ -178,6 +175,7 @@ export function ShellApp({
     });
 
   const [isChatDrawerOpen, setIsChatDrawerOpen] = React.useState(false);
+  const [chatViewMode, setChatViewMode] = React.useState<'list' | 'conversation'>('list');
   const [isMobileMoreOpen, setIsMobileMoreOpen] = React.useState(false);
   const [inspectedUser, setInspectedUser] = React.useState<PublicUserSummary | null>(null);
   const [blockedUserIds, setBlockedUserIds] = React.useState<Set<string>>(new Set());
@@ -216,24 +214,6 @@ export function ShellApp({
   const [activePairKey, setActivePairKey] = React.useState<string>(
     conversations[0]?.pairKey ?? '',
   );
-
-  // Check Backend API + PostgreSQL health on mount
-  React.useEffect(() => {
-    let isMounted = true;
-
-    fetch(`${apiBaseUrl}/health`)
-      .then((res) => (res.ok ? res.json() : Promise.reject(new Error('API unreachable'))))
-      .then((data: ApiHealthResponse) => {
-        if (isMounted) setApiHealth(data);
-      })
-      .catch(() => {
-        if (isMounted) setApiHealth(null);
-      });
-
-    return () => {
-      isMounted = false;
-    };
-  }, [apiBaseUrl]);
 
   // Restore authenticated user session if token exists and load persisted 1:1 conversations
   React.useEffect(() => {
@@ -403,6 +383,7 @@ export function ShellApp({
       });
 
       setActivePairKey(pairKey);
+      setChatViewMode('conversation');
       setIsChatDrawerOpen(true);
 
       if (accessToken) {
@@ -685,21 +666,6 @@ export function ShellApp({
                 </span>
               </div>
             </Link>
-
-            {/* Live API + PostgreSQL status indicator */}
-            <div className="hidden items-center lg:flex">
-              {apiHealth?.database.connected ? (
-                <Badge variant="verified" className="ml-3">
-                  <Activity className="h-3 w-3" aria-hidden="true" />
-                  API & DB Connected ({apiHealth.database.latencyMs}ms)
-                </Badge>
-              ) : (
-                <Badge variant="outline" className="ml-3 text-slate-500">
-                  <Activity className="h-3 w-3" aria-hidden="true" />
-                  Shell Host (:5000)
-                </Badge>
-              )}
-            </div>
           </div>
 
           <div className="flex items-center gap-2 sm:gap-3">
@@ -709,15 +675,7 @@ export function ShellApp({
                   variant="outline"
                   size="sm"
                   onClick={() => {
-                    if (activeConversation) {
-                      setConversations((prev) =>
-                        prev.map((c) =>
-                          c.pairKey === activeConversation.pairKey
-                            ? { ...c, unreadCount: 0 }
-                            : c,
-                        ),
-                      );
-                    }
+                    setChatViewMode('list');
                     setIsChatDrawerOpen(true);
                   }}
                   aria-label="Open 1:1 Direct Messages Drawer"
@@ -744,28 +702,24 @@ export function ShellApp({
                 >
                   <Bell className="h-4 w-4" aria-hidden="true" />
                 </Button>
+
+                <Link
+                  to="/profile"
+                  aria-label="My Profile and Account Settings"
+                  className="flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 py-1 pl-1 pr-3 text-xs font-semibold text-slate-800 transition-colors hover:bg-primary-50 hover:text-primary-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600"
+                >
+                  <Avatar
+                    src={authenticatedUser.profile.avatarUrl}
+                    alt={activeSelfDisplayName}
+                    fallbackText={activeSelfDisplayName}
+                    size="sm"
+                  />
+                  <span className="hidden md:inline">
+                    {activeSelfDisplayName} ({authenticatedUser.role})
+                  </span>
+                </Link>
               </>
             )}
-
-            <Link
-              to="/profile"
-              aria-label="My Profile and Account Settings"
-              className="flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 py-1 pl-1 pr-3 text-xs font-semibold text-slate-800 transition-colors hover:bg-primary-50 hover:text-primary-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600"
-            >
-              <Avatar
-                alt={authenticatedUser ? activeSelfDisplayName : 'Guest Rider'}
-                fallbackText={authenticatedUser ? activeSelfDisplayName : 'RC'}
-                size="sm"
-              />
-              <span className="hidden md:inline">
-                {authenticatedUser
-                  ? `${activeSelfDisplayName} (${authenticatedUser.role})`
-                  : 'Sign In Required'}
-              </span>
-              {!authenticatedUser && (
-                <LogIn className="h-3.5 w-3.5 text-primary-600 md:hidden" aria-hidden="true" />
-              )}
-            </Link>
           </div>
         </div>
       </header>
@@ -782,11 +736,11 @@ export function ShellApp({
                 Core Experience
               </p>
               {[
-                { to: '/communities', label: 'Communities', icon: Compass, port: ':5001' },
-                { to: '/blogs', label: 'Rider Blogs', icon: BookOpen, port: ':5001' },
-                { to: '/rides', label: 'Group Rides', icon: Car, port: ':5002' },
-                { to: '/help', label: 'Roadside Help', icon: AlertTriangle, port: ':5003', highlight: true },
-                { to: '/garage', label: 'My Garage', icon: Shield, port: ':5005' },
+                { to: '/communities', label: 'Communities', icon: Compass },
+                { to: '/blogs', label: 'Rider Blogs', icon: BookOpen },
+                { to: '/rides', label: 'Group Rides', icon: Car },
+                { to: '/help', label: 'Roadside Help', icon: AlertTriangle, highlight: true },
+                { to: '/garage', label: 'My Garage', icon: Shield },
               ].map((item) => {
                 const Icon = item.icon;
                 return (
@@ -807,9 +761,6 @@ export function ShellApp({
                       <Icon className="h-4 w-4" aria-hidden="true" />
                       {item.label}
                     </span>
-                    <span className="rounded-full bg-primary-100/90 px-2 py-0.5 font-mono text-[10px] font-semibold text-primary-900">
-                      {item.port}
-                    </span>
                   </NavLink>
                 );
               })}
@@ -818,11 +769,11 @@ export function ShellApp({
                 Directory & Commerce
               </p>
               {[
-                { to: '/marketplace', label: 'Marketplace', icon: ShoppingBag, port: ':5006' },
-                { to: '/mechanics', label: 'Mechanics', icon: Wrench, port: ':5004' },
-                { to: '/profile', label: 'Profile & Auth', icon: User, port: 'Phase 5' },
+                { to: '/marketplace', label: 'Marketplace', icon: ShoppingBag },
+                { to: '/mechanics', label: 'Mechanics', icon: Wrench },
+                { to: '/profile', label: 'Profile & Auth', icon: User },
                 ...(isAdminOrModerator
-                  ? [{ to: '/admin', label: 'Admin & Safety', icon: ShieldAlert, port: 'Phase 13' }]
+                  ? [{ to: '/admin', label: 'Admin & Safety', icon: ShieldAlert }]
                   : []),
               ].map((item) => {
                 const Icon = item.icon;
@@ -841,9 +792,6 @@ export function ShellApp({
                     <span className="flex items-center gap-2.5">
                       <Icon className="h-4 w-4" aria-hidden="true" />
                       {item.label}
-                    </span>
-                    <span className="rounded-full bg-slate-100 px-2 py-0.5 font-mono text-[10px] font-semibold text-slate-700">
-                      {item.port}
                     </span>
                   </NavLink>
                 );
@@ -897,7 +845,7 @@ export function ShellApp({
               <Route
                 path="/"
                 element={renderFederatedModule(
-                  'Community (@ridersclub/community)',
+                  'Communities',
                   'http://localhost:5001/remoteEntry.js',
                   <CommunityComponent initialSection="communities" />,
                 )}
@@ -905,7 +853,7 @@ export function ShellApp({
               <Route
                 path="/communities/*"
                 element={renderFederatedModule(
-                  'Community (@ridersclub/community)',
+                  'Communities',
                   'http://localhost:5001/remoteEntry.js',
                   <CommunityComponent initialSection="communities" />,
                 )}
@@ -913,7 +861,7 @@ export function ShellApp({
               <Route
                 path="/blogs/*"
                 element={renderFederatedModule(
-                  'Community (@ridersclub/community)',
+                  'Rider Blogs',
                   'http://localhost:5001/remoteEntry.js',
                   <CommunityComponent initialSection="blogs" />,
                 )}
@@ -921,7 +869,7 @@ export function ShellApp({
               <Route
                 path="/rides/*"
                 element={renderFederatedModule(
-                  'Rides (@ridersclub/rides)',
+                  'Group Rides',
                   'http://localhost:5002/remoteEntry.js',
                   <RidesComponent />,
                 )}
@@ -929,7 +877,7 @@ export function ShellApp({
               <Route
                 path="/help/*"
                 element={renderFederatedModule(
-                  'Help (@ridersclub/help)',
+                  'Roadside Help',
                   'http://localhost:5003/remoteEntry.js',
                   <HelpComponent />,
                 )}
@@ -937,7 +885,7 @@ export function ShellApp({
               <Route
                 path="/mechanics/*"
                 element={renderFederatedModule(
-                  'Mechanics (@ridersclub/mechanics)',
+                  'Mechanics',
                   'http://localhost:5004/remoteEntry.js',
                   <MechanicsComponent />,
                 )}
@@ -945,7 +893,7 @@ export function ShellApp({
               <Route
                 path="/garage/*"
                 element={renderFederatedModule(
-                  'Garage (@ridersclub/garage)',
+                  'My Garage',
                   'http://localhost:5005/remoteEntry.js',
                   <GarageComponent />,
                 )}
@@ -953,7 +901,7 @@ export function ShellApp({
               <Route
                 path="/marketplace/*"
                 element={renderFederatedModule(
-                  'Marketplace (@ridersclub/marketplace)',
+                  'Marketplace',
                   'http://localhost:5006/remoteEntry.js',
                   <MarketplaceComponent />,
                 )}
@@ -1113,139 +1061,210 @@ export function ShellApp({
         </div>
       )}
 
-      {/* Global Slide-Over 1:1 Direct Messaging Drawer */}
+      {/* Full-Screen 1:1 Direct Messaging View */}
       {isChatDrawerOpen && (
         <div
           role="dialog"
           aria-label="Individual Direct Chat Drawer"
-          className="fixed inset-0 z-50 flex justify-end bg-slate-900/40 backdrop-blur-xs"
+          className="fixed inset-0 z-50 flex flex-col bg-slate-50"
         >
-          <div className="flex h-full w-full max-w-md flex-col bg-white shadow-2xl">
-            <div className="flex items-center justify-between border-b border-slate-200 bg-primary-900 px-5 py-4 text-white">
-              <div>
-                <h2 className="text-base font-bold">1:1 Private Messaging</h2>
-                <p className="text-xs text-primary-200">
-                  Shared across all RidersClub micro-frontends
-                </p>
-              </div>
+          {/* Top Header Bar */}
+          <div className="border-b border-slate-200 bg-primary-900 px-4 py-3.5 text-white shadow-sm sm:px-6">
+            <div className="mx-auto flex max-w-5xl items-center justify-between gap-3">
+              {chatViewMode === 'conversation' && activeConversation ? (
+                <div className="flex min-w-0 items-center gap-3">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setChatViewMode('list')}
+                    aria-label="Back to all chats"
+                    className="shrink-0 gap-1.5 px-2.5 text-white hover:bg-primary-800 hover:text-white"
+                  >
+                    <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+                    <span>All Chats</span>
+                  </Button>
+                  <button
+                    type="button"
+                    aria-label={activeConversation.peer.displayName}
+                    onClick={() => setInspectedUser(activeConversation.peer)}
+                    className="flex min-w-0 items-center gap-2.5 rounded-lg px-2 py-1 text-left transition-colors hover:bg-primary-800"
+                  >
+                    <Avatar
+                      src={activeConversation.peer.avatarUrl}
+                      alt={activeConversation.peer.displayName}
+                      fallbackText={activeConversation.peer.displayName}
+                      size="sm"
+                    />
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-bold text-white">
+                        Chatting with {activeConversation.peer.displayName} (@
+                        {activeConversation.peer.username})
+                      </p>
+                      {activeConversation.contextLabel && (
+                        <p className="truncate text-[11px] text-primary-200">
+                          Initiated from {activeConversation.contextLabel}
+                        </p>
+                      )}
+                    </div>
+                  </button>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2.5">
+                  <MessageSquare className="h-5 w-5 text-primary-200" aria-hidden="true" />
+                  <h2 className="text-base font-bold sm:text-lg">
+                    1:1 Private Messaging ({conversations.length})
+                  </h2>
+                </div>
+              )}
+
               <Button
                 variant="ghost"
                 size="icon"
                 onClick={() => setIsChatDrawerOpen(false)}
                 aria-label="Close Direct Messages Drawer"
-                className="text-white hover:bg-primary-800 hover:text-white"
+                className="shrink-0 text-white hover:bg-primary-800 hover:text-white"
               >
                 <X className="h-5 w-5" aria-hidden="true" />
               </Button>
             </div>
-
-            {/* Conversation Switcher */}
-            <div className="flex gap-2 overflow-x-auto border-b border-slate-200 bg-slate-50 px-4 py-2.5">
-              {conversations.map((thread) => (
-                <button
-                  key={thread.pairKey}
-                  type="button"
-                  onClick={() => {
-                    setActivePairKey(thread.pairKey);
-                    setConversations((prev) =>
-                      prev.map((c) =>
-                        c.pairKey === thread.pairKey ? { ...c, unreadCount: 0 } : c,
-                      ),
-                    );
-                    if (accessToken && thread.conversationId && thread.unreadCount > 0) {
-                      void fetch(`${apiBaseUrl}/conversations/${thread.conversationId}/read`, {
-                        method: 'POST',
-                        headers: { Authorization: `Bearer ${accessToken}` },
-                      }).catch(() => {});
-                    }
-                  }}
-                  className={`flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-semibold transition-colors ${
-                    thread.pairKey === activePairKey
-                      ? 'border-primary-600 bg-primary-600 text-white'
-                      : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-100'
-                  }`}
-                >
-                  <span>{thread.peer.displayName}</span>
-                  {thread.unreadCount > 0 ? (
-                    <span className="inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-rose-600 px-1 text-[10px] font-bold text-white">
-                      {thread.unreadCount}
-                    </span>
-                  ) : null}
-                </button>
-              ))}
-            </div>
-
-            {/* Active Thread Messages */}
-            {activeConversation ? (
-              <>
-                <div className="border-b border-slate-100 bg-primary-50/60 px-5 py-2.5">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-semibold text-slate-800">
-                      Chatting with {activeConversation.peer.displayName} (@
-                      {activeConversation.peer.username})
-                    </span>
-                    <Badge variant="outline" className="text-[10px]">
-                      Pair Key: {activeConversation.pairKey}
-                    </Badge>
-                  </div>
-                  {activeConversation.contextLabel && (
-                    <p className="mt-0.5 text-[11px] text-primary-700">
-                      Initiated from {activeConversation.contextLabel}
-                    </p>
-                  )}
-                </div>
-
-                <div className="flex-1 space-y-3 overflow-y-auto p-5">
-                  {activeConversation.messages.length === 0 ? (
-                    <EmptyState
-                      title={`Start chatting with ${activeConversation.peer.displayName}`}
-                      description="Conversations are deduplicated between any two riders across Blogs, Communities, Rides, Help, Mechanics, and Marketplace."
-                    />
-                  ) : (
-                    activeConversation.messages.map((msg) => {
-                      const isMe = msg.senderId === activeSelfId;
-                      return (
-                        <div
-                          key={msg.id}
-                          className={`flex flex-col ${isMe ? 'items-end' : 'items-start'}`}
-                        >
-                          <div
-                            className={`max-w-[85%] rounded-2xl px-4 py-2.5 text-sm ${
-                              isMe
-                                ? 'bg-primary-600 text-white'
-                                : 'bg-slate-100 text-slate-900'
-                            }`}
-                          >
-                            {msg.body}
-                          </div>
-                          <span className="mt-1 text-[10px] text-slate-400">
-                            {msg.sentAtLabel}
-                          </span>
-                        </div>
-                      );
-                    })
-                  )}
-                </div>
-
-                <form
-                  onSubmit={handleSendMessage}
-                  className="flex items-center gap-2 border-t border-slate-200 p-4"
-                >
-                  <input
-                    type="text"
-                    value={draftMessage}
-                    onChange={(e) => setDraftMessage(e.target.value)}
-                    placeholder={`Message ${activeConversation.peer.displayName}...`}
-                    aria-label={`Message ${activeConversation.peer.displayName}`}
-                    className="h-10 flex-1 rounded-xl border border-slate-300 px-3 text-sm focus:border-primary-600 focus:outline-none focus:ring-2 focus:ring-primary-600/20"
-                  />
-                  <Button type="submit" size="icon" aria-label="Send message">
-                    <Send className="h-4 w-4" aria-hidden="true" />
-                  </Button>
-                </form>
-              </>
-            ) : null}
           </div>
+
+          {/* Full-Screen Body: Either Full-Screen All Chats List OR Full-Screen Conversation */}
+          {chatViewMode === 'list' || !activeConversation ? (
+            <div className="flex-1 overflow-y-auto">
+              <div className="mx-auto w-full max-w-5xl p-4 sm:p-6">
+                {conversations.length === 0 ? (
+                  <EmptyState
+                    title="No conversations yet"
+                    description="Click on any rider profile across Communities, Blogs, Rides, Help, Mechanics, or Marketplace to start a 1:1 chat."
+                  />
+                ) : (
+                  <div className="divide-y divide-slate-200 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+                    {conversations.map((thread) => {
+                      const lastMessage = thread.messages[thread.messages.length - 1];
+                      return (
+                        <button
+                          key={thread.pairKey}
+                          type="button"
+                          aria-label={thread.peer.displayName}
+                          onClick={() => {
+                            setActivePairKey(thread.pairKey);
+                            setChatViewMode('conversation');
+                            setConversations((prev) =>
+                              prev.map((c) =>
+                                c.pairKey === thread.pairKey ? { ...c, unreadCount: 0 } : c,
+                              ),
+                            );
+                            if (accessToken && thread.conversationId && thread.unreadCount > 0) {
+                              void fetch(
+                                `${apiBaseUrl}/conversations/${thread.conversationId}/read`,
+                                {
+                                  method: 'POST',
+                                  headers: { Authorization: `Bearer ${accessToken}` },
+                                },
+                              ).catch(() => {});
+                            }
+                          }}
+                          className="flex w-full items-center gap-4 px-4 py-4 text-left transition-colors hover:bg-slate-50 sm:px-6"
+                        >
+                          <Avatar
+                            src={thread.peer.avatarUrl}
+                            alt={thread.peer.displayName}
+                            fallbackText={thread.peer.displayName}
+                            size="md"
+                          />
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center justify-between gap-2">
+                              <span
+                                className={`truncate text-sm ${
+                                  thread.unreadCount > 0
+                                    ? 'font-bold text-slate-900'
+                                    : 'font-semibold text-slate-800'
+                                }`}
+                              >
+                                {thread.peer.displayName}{' '}
+                                <span className="text-xs font-normal text-slate-400">
+                                  @{thread.peer.username}
+                                </span>
+                              </span>
+                              {lastMessage && (
+                                <span className="shrink-0 text-xs text-slate-400">
+                                  {lastMessage.sentAtLabel}
+                                </span>
+                              )}
+                            </div>
+                            <div className="mt-1 flex items-center justify-between gap-2">
+                              <p className="truncate text-xs text-slate-500">
+                                {lastMessage
+                                  ? `${lastMessage.senderId === activeSelfId ? 'You: ' : ''}${lastMessage.body}`
+                                  : thread.contextLabel ?? 'Tap to open conversation'}
+                              </p>
+                              {thread.unreadCount > 0 ? (
+                                <span className="inline-flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-emerald-600 px-1.5 text-[11px] font-bold text-white">
+                                  {thread.unreadCount}
+                                </span>
+                              ) : null}
+                            </div>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </div>
+          ) : (
+            <div className="mx-auto flex min-h-0 w-full max-w-5xl flex-1 flex-col bg-white shadow-sm sm:my-4 sm:rounded-2xl sm:border sm:border-slate-200">
+              <div className="flex-1 space-y-3 overflow-y-auto p-4 sm:p-6">
+                {activeConversation.messages.length === 0 ? (
+                  <EmptyState
+                    title={`Start chatting with ${activeConversation.peer.displayName}`}
+                    description="Send a message below to start your conversation."
+                  />
+                ) : (
+                  activeConversation.messages.map((msg) => {
+                    const isMe = msg.senderId === activeSelfId;
+                    return (
+                      <div
+                        key={msg.id}
+                        className={`flex flex-col ${isMe ? 'items-end' : 'items-start'}`}
+                      >
+                        <div
+                          className={`max-w-[80%] rounded-2xl px-4 py-2.5 text-sm ${
+                            isMe
+                              ? 'bg-primary-600 text-white'
+                              : 'bg-slate-100 text-slate-900'
+                          }`}
+                        >
+                          {msg.body}
+                        </div>
+                        <span className="mt-1 text-[10px] text-slate-400">
+                          {msg.sentAtLabel}
+                        </span>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+
+              <form
+                onSubmit={handleSendMessage}
+                className="flex items-center gap-2.5 border-t border-slate-200 p-4 sm:px-6"
+              >
+                <input
+                  type="text"
+                  value={draftMessage}
+                  onChange={(e) => setDraftMessage(e.target.value)}
+                  placeholder={`Message ${activeConversation.peer.displayName}...`}
+                  aria-label={`Message ${activeConversation.peer.displayName}`}
+                  className="h-11 flex-1 rounded-xl border border-slate-300 px-4 text-sm focus:border-primary-600 focus:outline-none focus:ring-2 focus:ring-primary-600/20"
+                />
+                <Button type="submit" size="icon" aria-label="Send message">
+                  <Send className="h-4 w-4" aria-hidden="true" />
+                </Button>
+              </form>
+            </div>
+          )}
         </div>
       )}
 

@@ -13,7 +13,6 @@ import {
   Plus,
   Send,
   ShieldCheck,
-  Sparkles,
   Trash2,
   Users,
   X,
@@ -941,21 +940,9 @@ export function CommunityRemoteApp({
       }
       className="space-y-6"
     >
-      {/* Federated Remote Banner & Header */}
+      {/* Header Banner */}
       <div className="rounded-2xl bg-gradient-to-r from-primary-900 via-primary-800 to-primary-700 p-5 text-white shadow-md sm:p-7">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="inline-flex items-center gap-2 rounded-full bg-white/15 px-3 py-1 text-xs font-medium backdrop-blur-sm">
-            <Sparkles className="h-3.5 w-3.5 text-primary-200" aria-hidden="true" />
-            <span>Federated Remote • @ridersclub/community (:5001)</span>
-          </div>
-          <Badge variant="secondary" className="border-none bg-emerald-100 text-emerald-950">
-            {activeSection === 'communities'
-              ? 'Phase 6 Live Communities & Group Chat'
-              : 'Phase 6 Live Rider Blogs & Discussions'}
-          </Badge>
-        </div>
-
-        <div className="mt-4 flex flex-col justify-between gap-4 lg:flex-row lg:items-end">
+        <div className="flex flex-col justify-between gap-4 lg:flex-row lg:items-end">
           <div>
             <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
               {activeSection === 'communities'

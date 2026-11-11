@@ -9,7 +9,6 @@ import {
   PhoneCall,
   Plus,
   ShieldAlert,
-  Sparkles,
   Wrench,
   XCircle,
 } from 'lucide-react';
@@ -425,20 +424,7 @@ export function HelpRemoteApp(): React.JSX.Element {
 
       {/* Header & Consent-Based Request Action */}
       <div className="rounded-2xl bg-gradient-to-r from-slate-900 via-primary-950 to-primary-900 p-5 text-white shadow-md sm:p-7">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="inline-flex items-center gap-2 rounded-full bg-white/15 px-3 py-1 text-xs font-medium">
-            <Sparkles
-              className="h-3.5 w-3.5 text-amber-300"
-              aria-hidden="true"
-            />
-            <span>Federated Remote • @ridersclub/help (:5003)</span>
-          </div>
-          <Badge variant="verified">
-            Phase 9 Live • Consent-First Roadside Help
-          </Badge>
-        </div>
-
-        <div className="mt-4 flex flex-col justify-between gap-4 lg:flex-row lg:items-end">
+        <div className="flex flex-col justify-between gap-4 lg:flex-row lg:items-end">
           <div>
             <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
               Roadside Assistance & Peer Help
