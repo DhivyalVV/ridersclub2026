@@ -209,12 +209,12 @@ export interface CommunityItem {
   slug: string;
   name: string;
   description: string;
-  category: string;
   visibility: CommunityVisibility;
   memberCount: number;
   founder: PublicUserSummary;
   viewerMembershipStatus: CommunityMembershipStatus | null;
   viewerRole: CommunityMemberRole | null;
+  lastMessage?: CommunityChatMessageItem | null;
   createdAt: string;
 }
 
@@ -245,7 +245,6 @@ export interface CommunityDetailResponse {
 export interface CreateCommunityPayload {
   name: string;
   description: string;
-  category: string;
   visibility: CommunityVisibility;
 }
 
@@ -460,8 +459,6 @@ export interface GarageVehicleItem {
   year: number;
   registrationLabel: string | null;
   currentOdometerKm: number;
-  nextReminderLabel: string | null;
-  nextServiceOdometerKm: number | null;
   notes: VehicleNoteItem[];
   serviceHistory: VehicleServiceRecordItem[];
   createdAt: string;
@@ -474,8 +471,6 @@ export interface CreateVehiclePayload {
   year: number;
   registrationLabel?: string;
   currentOdometerKm: number;
-  nextReminderLabel?: string;
-  nextServiceOdometerKm?: number;
 }
 
 export interface UpdateVehiclePayload {
@@ -484,8 +479,6 @@ export interface UpdateVehiclePayload {
   year?: number;
   registrationLabel?: string;
   currentOdometerKm?: number;
-  nextReminderLabel?: string;
-  nextServiceOdometerKm?: number;
 }
 
 export interface CreateServiceRecordPayload {

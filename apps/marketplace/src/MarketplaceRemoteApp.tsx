@@ -137,6 +137,7 @@ export function MarketplaceRemoteApp(): React.JSX.Element {
   >(null);
   const [statusNotice, setStatusNotice] = React.useState<string | null>(null);
   const [errorNotice, setErrorNotice] = React.useState<string | null>(null);
+  const [showHeaderInfo, setShowHeaderInfo] = React.useState(false);
 
   // Create Listing form state
   const [newVehicleType, setNewVehicleType] = React.useState<VehicleType>(
@@ -379,41 +380,61 @@ export function MarketplaceRemoteApp(): React.JSX.Element {
       aria-label="Secondhand Cars and Bikes Marketplace Federated Module"
       className="space-y-6"
     >
-      <div className="rounded-2xl bg-gradient-to-r from-primary-900 via-primary-800 to-primary-700 p-5 text-white shadow-md sm:p-7">
-        <div className="flex flex-col justify-between gap-4 lg:flex-row lg:items-end">
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
-              Secondhand Cars & Bikes Marketplace
-            </h1>
-            <p className="mt-1.5 max-w-2xl text-sm text-primary-100 sm:text-base">
-              Browse enthusiast-owned motorcycles and cars and contact sellers
-              directly through 1:1 chat. All vehicle descriptions and prices are
-              seller-provided claims.
-            </p>
-          </div>
+      <div className="relative rounded-2xl bg-gradient-to-r from-primary-900 via-primary-800 to-primary-700 px-5 py-4 pr-12 text-white shadow-md sm:px-6 sm:pr-14">
+        <div className="absolute right-2.5 top-2.5">
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            aria-label="Toggle page description"
+            aria-expanded={showHeaderInfo}
+            title="Page information"
+            onClick={() => setShowHeaderInfo((prev) => !prev)}
+            className="h-7 w-7 text-primary-100 hover:bg-white/15 hover:text-white"
+          >
+            <Info className="h-4 w-4" aria-hidden="true" />
+          </Button>
+          {showHeaderInfo && (
+            <>
+              <div
+                className="fixed inset-0 z-40"
+                aria-hidden="true"
+                onClick={() => setShowHeaderInfo(false)}
+              />
+              <div
+                role="dialog"
+                aria-label="Page information"
+                className="absolute right-0 top-full z-50 mt-1.5 w-72 space-y-2 rounded-xl border border-yellow-200 bg-yellow-50 p-3.5 text-xs leading-relaxed text-yellow-950 shadow-lg sm:w-80"
+              >
+                <p>
+                  Browse enthusiast-owned motorcycles and cars and contact sellers
+                  directly through 1:1 chat. All vehicle descriptions and prices are
+                  seller-provided claims.
+                </p>
+                <p className="text-yellow-900">
+                  <strong>Buyer Advisory:</strong> Listings reflect seller-provided
+                  claims and are not automatically inspected or verified by
+                  RidersClub. Always perform an independent mechanical inspection and
+                  verify RC/insurance documents before completing a transaction
+                  offline.
+                </p>
+              </div>
+            </>
+          )}
+        </div>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h1 className="text-xl font-bold tracking-tight sm:text-2xl">
+            Secondhand Cars & Bikes Marketplace
+          </h1>
           <Button
             variant="secondary"
-            className="bg-white text-primary-900 hover:bg-primary-50"
+            className="bg-yellow-100 text-yellow-950 hover:bg-yellow-200"
             onClick={() => setShowCreateForm((prev) => !prev)}
           >
             <Plus className="h-4 w-4" aria-hidden="true" />
             Create Listing
           </Button>
         </div>
-      </div>
-
-      {/* Buyer Advisory Notice (Section 11 Requirement) */}
-      <div className="flex items-start gap-2.5 rounded-xl border border-slate-200 bg-white p-3.5 text-xs text-slate-600 shadow-xs">
-        <Info
-          className="mt-0.5 h-4 w-4 shrink-0 text-primary-600"
-          aria-hidden="true"
-        />
-        <span>
-          <strong>Buyer Advisory:</strong> Listings reflect seller-provided
-          claims and are not automatically inspected or verified by RidersClub.
-          Always perform an independent mechanical inspection and verify
-          RC/insurance documents before completing a transaction offline.
-        </span>
       </div>
 
       {statusNotice && (
@@ -750,12 +771,12 @@ export function MarketplaceRemoteApp(): React.JSX.Element {
                 <div className="flex items-center justify-between rounded-xl bg-slate-50 p-3 text-xs text-slate-700">
                   <span className="inline-flex items-center gap-1.5">
                     <MapPin
-                      className="h-3.5 w-3.5 text-primary-600"
+                      className="h-3.5 w-3.5 text-slate-500"
                       aria-hidden="true"
                     />
                     {listing.location}
                   </span>
-                  <span className="text-[11px] font-medium text-amber-800">
+                  <span className="text-[11px] font-medium text-yellow-800">
                     Unverified Seller Claim
                   </span>
                 </div>

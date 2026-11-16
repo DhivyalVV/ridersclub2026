@@ -4,23 +4,23 @@
 
 @layer base {
   :root {
-    --background: 214 32% 98%;
+    --background: 0 0% 98%;
     --foreground: 222.2 84% 4.9%;
     --card: 0 0% 100%;
     --card-foreground: 222.2 84% 4.9%;
-    --primary: 221.2 83.2% 53.3%;
-    --primary-foreground: 210 40% 98%;
-    --secondary: 214 32% 91%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
-    --muted: 210 40% 96.1%;
+    --primary: 0 72% 45%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 48 100% 88%;
+    --secondary-foreground: 26 83% 14%;
+    --muted: 0 0% 95%;
     --muted-foreground: 215.4 16.3% 42%;
-    --accent: 214 95% 93%;
-    --accent-foreground: 221.2 83.2% 40%;
+    --accent: 48 100% 96%;
+    --accent-foreground: 26 83% 14%;
     --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 214.3 31.8% 88%;
-    --input: 214.3 31.8% 88%;
-    --ring: 221.2 83.2% 53.3%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 0 0% 88%;
+    --input: 0 0% 88%;
+    --ring: 0 72% 45%;
     --radius: 0.75rem;
   }
 
@@ -36,9 +36,9 @@
 
 /* Federated remote banner gradients (shared single stylesheet via Shell host) */
 .from-primary-900.via-primary-800.to-primary-700 {
-  background-image: linear-gradient(to right, #1e3a8a, #1e40af, #1d4ed8);
+  background-image: linear-gradient(to right, #7f1d1d, #991b1b, #b91c1c);
 }
 
 .from-slate-900.via-primary-950.to-primary-900 {
-  background-image: linear-gradient(to right, #0f172a, #172554, #1e3a8a);
+  background-image: linear-gradient(to right, #450a0a, #7f1d1d);
 }

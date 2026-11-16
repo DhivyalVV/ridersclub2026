@@ -2,6 +2,7 @@ import * as React from 'react';
 import {
   CheckCircle2,
   Clock,
+  Info,
   MapPin,
   Phone,
   Plus,
@@ -119,6 +120,7 @@ export function MechanicsRemoteApp(): React.JSX.Element {
   const [showRegisterForm, setShowRegisterForm] =
     React.useState<boolean>(false);
   const [statusNotice, setStatusNotice] = React.useState<string | null>(null);
+  const [showHeaderInfo, setShowHeaderInfo] = React.useState<boolean>(false);
 
   // Registration form fields
   const [businessName, setBusinessName] = React.useState('');
@@ -331,21 +333,48 @@ export function MechanicsRemoteApp(): React.JSX.Element {
       aria-label="Mechanics and Service Providers Federated Module"
       className="space-y-6"
     >
-      <div className="rounded-2xl bg-gradient-to-r from-primary-900 via-primary-800 to-primary-700 p-5 text-white shadow-md sm:p-7">
-        <div className="flex flex-col justify-between gap-4 lg:flex-row lg:items-end">
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
-              Mechanics & Service Providers
-            </h1>
-            <p className="mt-1.5 max-w-2xl text-sm text-primary-100 sm:text-base">
-              Search independent workshops and specialists by location and
-              service category. Providers are only marked as Verified after
-              administrator verification is completed.
-            </p>
-          </div>
+      <div className="relative rounded-2xl bg-gradient-to-r from-primary-900 via-primary-800 to-primary-700 px-5 py-4 pr-12 text-white shadow-md sm:px-6 sm:pr-14">
+        <div className="absolute right-2.5 top-2.5">
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            aria-label="Toggle page description"
+            aria-expanded={showHeaderInfo}
+            title="Page information"
+            onClick={() => setShowHeaderInfo((prev) => !prev)}
+            className="h-7 w-7 text-primary-100 hover:bg-white/15 hover:text-white"
+          >
+            <Info className="h-4 w-4" aria-hidden="true" />
+          </Button>
+          {showHeaderInfo && (
+            <>
+              <div
+                className="fixed inset-0 z-40"
+                aria-hidden="true"
+                onClick={() => setShowHeaderInfo(false)}
+              />
+              <div
+                role="dialog"
+                aria-label="Page information"
+                className="absolute right-0 top-full z-50 mt-1.5 w-72 rounded-xl border border-yellow-200 bg-yellow-50 p-3.5 text-xs leading-relaxed text-yellow-950 shadow-lg sm:w-80"
+              >
+                <p>
+                  Search independent workshops and specialists by location and
+                  service category. Providers are only marked as Verified after
+                  administrator verification is completed.
+                </p>
+              </div>
+            </>
+          )}
+        </div>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h1 className="text-xl font-bold tracking-tight sm:text-2xl">
+            Mechanics & Service Providers
+          </h1>
           <Button
             variant="secondary"
-            className="bg-white text-primary-900 hover:bg-primary-50"
+            className="bg-yellow-100 text-yellow-950 hover:bg-yellow-200"
             onClick={() => setShowRegisterForm((prev) => !prev)}
           >
             <Plus className="h-4 w-4" aria-hidden="true" />

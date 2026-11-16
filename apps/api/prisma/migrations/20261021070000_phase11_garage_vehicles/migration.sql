@@ -11,8 +11,6 @@ CREATE TABLE "garage_vehicles" (
     "year" INTEGER NOT NULL,
     "registrationLabel" TEXT,
     "currentOdometerKm" INTEGER NOT NULL DEFAULT 0,
-    "nextReminderLabel" TEXT,
-    "nextServiceOdometerKm" INTEGER,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 

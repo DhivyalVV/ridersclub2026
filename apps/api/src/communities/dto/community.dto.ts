@@ -18,12 +18,6 @@ export class CreateCommunityDto {
   @MaxLength(600)
   description!: string;
 
-  @ApiProperty({ example: 'Adventure & Touring' })
-  @IsString()
-  @MinLength(2)
-  @MaxLength(60)
-  category!: string;
-
   @ApiProperty({ enum: CommunityVisibility, example: CommunityVisibility.PUBLIC })
   @IsEnum(CommunityVisibility)
   visibility!: CommunityVisibility;

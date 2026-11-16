@@ -11,7 +11,7 @@ describe('GarageRemoteApp federated remote (Phase 11)', () => {
     render(<GarageRemoteApp />);
 
     expect(
-      screen.getByText(/Private by Default \(Owner-Only Records\)/i),
+      screen.getByText(/My Garage & Service Logbook/i),
     ).toBeTruthy();
     expect(screen.getByText(/10,000 km Periodic Service/i)).toBeTruthy();
 

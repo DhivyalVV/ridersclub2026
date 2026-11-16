@@ -1,6 +1,7 @@
 import * as React from 'react';
 import {
   CheckCircle2,
+  Info,
   KeyRound,
   Link2,
   LogOut,
@@ -66,6 +67,7 @@ export function AuthAndProfileView({
   const [statusMessage, setStatusMessage] = React.useState<string | null>(null);
   const [errorMessage, setErrorMessage] = React.useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
+  const [showHeaderInfo, setShowHeaderInfo] = React.useState(false);
 
   React.useEffect(() => {
     if (currentUser) {
@@ -411,10 +413,10 @@ export function AuthAndProfileView({
               {otpRequested && (
                 <form
                   onSubmit={handleVerifyOtp}
-                  className="mt-4 space-y-3 rounded-xl border border-primary-200 bg-primary-50/60 p-4"
+                  className="mt-4 space-y-3 rounded-xl border border-slate-200 bg-slate-50 p-4"
                 >
                   {otpRequested.devOtpPreview && (
-                    <div className="flex items-center justify-between rounded-lg bg-amber-100 px-3 py-1.5 text-xs font-semibold text-amber-950">
+                    <div className="flex items-center justify-between rounded-lg bg-yellow-100 px-3 py-1.5 text-xs font-semibold text-yellow-950">
                       <span>Local Dev OTP Code: {otpRequested.devOtpPreview}</span>
                       <Badge variant="warning">Dev Mode</Badge>
                     </div>
@@ -490,30 +492,67 @@ export function AuthAndProfileView({
           </Card>
         </div>
       ) : (
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-          {/* Edit Profile & Privacy Controls */}
-          <Card className="lg:col-span-2">
-            <CardHeader className="flex flex-row items-start justify-between">
-              <div>
+        <>
+          <div className="relative rounded-2xl bg-gradient-to-r from-primary-900 via-primary-800 to-primary-700 px-5 py-4 pr-12 text-white shadow-md sm:px-6 sm:pr-14">
+            <div className="absolute right-2.5 top-2.5">
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                aria-label="Toggle page description"
+                aria-expanded={showHeaderInfo}
+                title="Page information"
+                onClick={() => setShowHeaderInfo((prev) => !prev)}
+                className="h-7 w-7 text-primary-100 hover:bg-white/15 hover:text-white"
+              >
+                <Info className="h-4 w-4" aria-hidden="true" />
+              </Button>
+              {showHeaderInfo && (
+                <>
+                  <div
+                    className="fixed inset-0 z-40"
+                    aria-hidden="true"
+                    onClick={() => setShowHeaderInfo(false)}
+                  />
+                  <div
+                    role="dialog"
+                    aria-label="Page information"
+                    className="absolute right-0 top-full z-50 mt-1.5 w-72 rounded-xl border border-yellow-200 bg-yellow-50 p-3.5 text-xs leading-relaxed text-yellow-950 shadow-lg sm:w-80"
+                  >
+                    <p>
+                      Update how your profile appears across Blogs, Communities, Rides, Help,
+                      Mechanics, and Marketplace.
+                    </p>
+                  </div>
+                </>
+              )}
+            </div>
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="flex flex-wrap items-center gap-2">
+                <h1 className="text-xl font-bold tracking-tight sm:text-2xl">
+                  Edit Rider Profile & Privacy Settings
+                </h1>
                 <Badge variant="verified">
                   <UserCheck className="h-3 w-3" aria-hidden="true" />
                   Authenticated Session ({currentUser.role})
                 </Badge>
-                <CardTitle className="mt-2 text-2xl">
-                  Edit Rider Profile & Privacy Settings
-                </CardTitle>
-                <CardDescription>
-                  Update how your profile appears across Blogs, Communities, Rides, Help,
-                  Mechanics, and Marketplace.
-                </CardDescription>
               </div>
-              <Button variant="outline" size="sm" onClick={onSignOut}>
+              <Button
+                variant="secondary"
+                size="sm"
+                className="bg-yellow-100 text-yellow-950 hover:bg-yellow-200"
+                onClick={onSignOut}
+              >
                 <LogOut className="h-3.5 w-3.5" aria-hidden="true" />
                 Sign Out
               </Button>
-            </CardHeader>
+            </div>
+          </div>
 
-            <CardContent>
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+            {/* Edit Profile & Privacy Controls */}
+            <Card className="lg:col-span-2">
+              <CardContent className="pt-6">
               <form onSubmit={handleSaveProfile} className="space-y-4">
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <div>
@@ -687,7 +726,7 @@ export function AuthAndProfileView({
                   </Button>
                   {linkOtpPreview && (
                     <form onSubmit={handleVerifyLinkPhone} className="space-y-2 pt-2">
-                      <p className="text-[11px] font-semibold text-amber-800">
+                      <p className="text-[11px] font-semibold text-yellow-800">
                         Dev OTP: {linkOtpPreview}
                       </p>
                       <input
@@ -706,6 +745,7 @@ export function AuthAndProfileView({
             </CardContent>
           </Card>
         </div>
+        </>
       )}
     </section>
   );

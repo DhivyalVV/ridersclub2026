@@ -5,6 +5,7 @@ import {
   Clock,
   Compass,
   ExternalLink,
+  Info,
   MapPin,
   PhoneCall,
   Plus,
@@ -140,6 +141,7 @@ export function HelpRemoteApp(): React.JSX.Element {
   >('ALL');
   const [viewMode, setViewMode] = React.useState<'LIST' | 'MAP'>('LIST');
   const [statusNotice, setStatusNotice] = React.useState<string | null>(null);
+  const [showHeaderInfo, setShowHeaderInfo] = React.useState(false);
 
   // Composer state
   const [newCategory, setNewCategory] = React.useState<HelpCategory>(
@@ -397,61 +399,81 @@ export function HelpRemoteApp(): React.JSX.Element {
       <div
         role="region"
         aria-label="Official Emergency Services Disclaimer"
-        className="rounded-2xl border-2 border-red-300 bg-red-50 p-4 text-red-950 shadow-sm sm:p-5"
+        className="rounded-xl border border-red-300 bg-red-50 px-4 py-2.5 text-red-950 shadow-xs"
       >
-        <div className="flex items-start gap-3">
+        <div className="flex items-center gap-2.5">
           <ShieldAlert
-            className="mt-0.5 h-6 w-6 shrink-0 text-red-600"
+            className="h-4 w-4 shrink-0 text-red-600"
             aria-hidden="true"
           />
-          <div className="space-y-1">
-            <h2 className="text-sm font-bold uppercase tracking-wide text-red-900">
-              Important Safety Notice — Not an Official Emergency Service
-            </h2>
-            <p className="text-xs leading-relaxed text-red-900 sm:text-sm">
-              RidersClub Help is a voluntary, peer-to-peer rider assistance
-              board for mechanical breakdowns and roadside support.{' '}
-              <strong>
-                If you or anyone else is injured or in immediate danger, call
-                official local emergency services (112 / 108 / 911) immediately.
-              </strong>{' '}
-              Your live location is never shared automatically without your
-              explicit consent.
-            </p>
-          </div>
+          <h2 className="text-xs font-bold uppercase tracking-wide text-red-900">
+            Important Safety Notice — Not an Official Emergency Service (Call 112 / 108 / 911 for emergencies)
+          </h2>
         </div>
       </div>
 
       {/* Header & Consent-Based Request Action */}
-      <div className="rounded-2xl bg-gradient-to-r from-slate-900 via-primary-950 to-primary-900 p-5 text-white shadow-md sm:p-7">
-        <div className="flex flex-col justify-between gap-4 lg:flex-row lg:items-end">
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
+      <div className="relative rounded-2xl bg-gradient-to-r from-slate-900 via-primary-950 to-primary-900 px-5 py-4 pr-12 text-white shadow-md sm:px-6 sm:pr-14">
+        <div className="absolute right-2.5 top-2.5">
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            aria-label="Toggle page description"
+            aria-expanded={showHeaderInfo}
+            title="Page information"
+            onClick={() => setShowHeaderInfo((prev) => !prev)}
+            className="h-7 w-7 text-slate-200 hover:bg-white/15 hover:text-white"
+          >
+            <Info className="h-4 w-4" aria-hidden="true" />
+          </Button>
+          {showHeaderInfo && (
+            <>
+              <div
+                className="fixed inset-0 z-40"
+                aria-hidden="true"
+                onClick={() => setShowHeaderInfo(false)}
+              />
+              <div
+                role="dialog"
+                aria-label="Page information"
+                className="absolute right-0 top-full z-50 mt-1.5 w-72 space-y-1.5 rounded-xl border border-yellow-200 bg-yellow-50 p-3.5 text-xs leading-relaxed text-yellow-950 shadow-lg sm:w-80"
+              >
+                <p>
+                  Request mechanical help from nearby riders or offer assistance via
+                  private 1:1 chat. Coordinates are strictly opt-in and
+                  automatically redacted once resolved.
+                </p>
+                <p className="font-medium text-yellow-900">
+                  RidersClub Help is a voluntary, peer-to-peer rider assistance
+                  board for mechanical breakdowns and roadside support. If you or
+                  anyone else is injured or in immediate danger, call official local
+                  emergency services (112 / 108 / 911) immediately.
+                </p>
+              </div>
+            </>
+          )}
+        </div>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="space-y-2">
+            <h1 className="text-xl font-bold tracking-tight sm:text-2xl">
               Roadside Assistance & Peer Help
             </h1>
-            <p className="mt-1.5 max-w-2xl text-sm text-slate-200">
-              Request mechanical help from nearby riders or offer assistance via
-              private 1:1 chat. Coordinates are strictly opt-in and
-              automatically redacted once resolved.
-            </p>
-
-            <label className="mt-4 inline-flex cursor-pointer items-center gap-2.5 rounded-xl bg-white/10 px-3.5 py-2 text-xs text-white">
+            <label className="inline-flex cursor-pointer items-center gap-2 rounded-xl bg-white/10 px-3 py-1.5 text-xs text-white">
               <input
                 type="checkbox"
                 checked={consentChecked}
                 onChange={(e) => setConsentChecked(e.target.checked)}
-                className="h-4 w-4 rounded border-white/40 accent-amber-500"
+                className="h-4 w-4 rounded border-white/40 accent-yellow-500"
               />
               <span>
-                I explicitly consent to share my current coordinates for this
-                help request only
+                Share current GPS coordinates for this help request only
               </span>
             </label>
           </div>
 
           <Button
             variant="emergency"
-            size="lg"
             onClick={() => setShowComposer((prev) => !prev)}
           >
             <AlertTriangle className="h-4 w-4" aria-hidden="true" />
@@ -480,10 +502,10 @@ export function HelpRemoteApp(): React.JSX.Element {
 
       {/* Composer Form */}
       {showComposer && (
-        <Card className="border-amber-300 bg-amber-50/40 shadow-sm">
+        <Card className="border-yellow-300 bg-yellow-50/40 shadow-sm">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-lg">
-              <Plus className="h-5 w-5 text-amber-600" aria-hidden="true" />
+              <Plus className="h-5 w-5 text-yellow-600" aria-hidden="true" />
               Create Roadside Help Request
             </CardTitle>
             <CardDescription>
@@ -572,7 +594,7 @@ export function HelpRemoteApp(): React.JSX.Element {
               </div>
 
               {consentChecked && (
-                <div className="grid grid-cols-1 gap-3 rounded-xl border border-amber-200 bg-white p-3.5 sm:grid-cols-3">
+                <div className="grid grid-cols-1 gap-3 rounded-xl border border-yellow-200 bg-white p-3.5 sm:grid-cols-3">
                   <div>
                     <label
                       htmlFor="help-location-label"
@@ -682,11 +704,11 @@ export function HelpRemoteApp(): React.JSX.Element {
 
       {/* Optional Radar & Map Overview */}
       {viewMode === 'MAP' && (
-        <Card className="border-primary-200 bg-slate-900 text-white">
+        <Card className="border-yellow-200 bg-slate-900 text-white">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base text-white">
               <Compass
-                className="h-5 w-5 text-primary-400"
+                className="h-5 w-5 text-yellow-400"
                 aria-hidden="true"
               />
               Consent-Filtered Roadside Radar (OpenStreetMap Integration)
@@ -721,7 +743,7 @@ export function HelpRemoteApp(): React.JSX.Element {
                     className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-white/10 bg-white/5 p-3.5 text-xs"
                   >
                     <div>
-                      <span className="font-semibold text-amber-300">
+                      <span className="font-semibold text-yellow-300">
                         {pin.category.replace(/_/g, ' ')}
                       </span>{' '}
                       • {pin.requester.displayName} ({pin.locationLabel})
@@ -754,7 +776,7 @@ export function HelpRemoteApp(): React.JSX.Element {
           return (
             <Card
               key={req.id}
-              className="flex flex-col justify-between border-amber-200/80"
+              className="flex flex-col justify-between border-yellow-200/80"
             >
               <CardHeader>
                 <div className="flex flex-wrap items-center justify-between gap-2">
