@@ -3,6 +3,7 @@ import {
   CheckCircle2,
   ClipboardList,
   Flag,
+  Info,
   Lock,
   Plus,
   ShieldAlert,
@@ -126,6 +127,7 @@ export function AdminModerationView({
   const [statusFilter, setStatusFilter] = React.useState<'ALL' | ReportStatus>('ALL');
   const [showReportComposer, setShowReportComposer] = React.useState(false);
   const [statusBanner, setStatusBanner] = React.useState<string | null>(null);
+  const [showHeaderInfo, setShowHeaderInfo] = React.useState(false);
 
   // Report composer state
   const [targetType, setTargetType] = React.useState<ModerationTargetType>(
@@ -362,35 +364,57 @@ export function AdminModerationView({
   return (
     <div className="space-y-6">
       {/* Deep Cobalt Governance Header Banner */}
-      <div className="rounded-2xl bg-gradient-to-r from-primary-950 via-primary-900 to-primary-700 p-6 text-white shadow-md">
-        <div className="flex flex-col justify-between gap-4 lg:flex-row lg:items-center">
-          <div>
-            <div className="flex flex-wrap items-center gap-2">
-              <Badge className="bg-white/15 text-white border-white/25">
-                <ShieldCheck className="mr-1 h-3.5 w-3.5" aria-hidden="true" />
-                Trust, Safety & Governance Console
-              </Badge>
-              <Badge variant="verified">
-                Role: {effectiveRole}
-              </Badge>
-            </div>
-            <h1 className="mt-2 text-2xl font-bold tracking-tight sm:text-3xl">
+      <div className="relative rounded-2xl bg-gradient-to-r from-primary-950 via-primary-900 to-primary-700 px-5 py-4 pr-12 text-white shadow-md sm:px-6 sm:pr-14">
+        <div className="absolute right-2.5 top-2.5">
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            aria-label="Toggle page description"
+            aria-expanded={showHeaderInfo}
+            title="Page information"
+            onClick={() => setShowHeaderInfo((prev) => !prev)}
+            className="h-7 w-7 text-primary-100 hover:bg-white/15 hover:text-white"
+          >
+            <Info className="h-4 w-4" aria-hidden="true" />
+          </Button>
+          {showHeaderInfo && (
+            <>
+              <div
+                className="fixed inset-0 z-40"
+                aria-hidden="true"
+                onClick={() => setShowHeaderInfo(false)}
+              />
+              <div
+                role="dialog"
+                aria-label="Page information"
+                className="absolute right-0 top-full z-50 mt-1.5 w-72 rounded-xl border border-yellow-200 bg-yellow-50 p-3.5 text-xs leading-relaxed text-yellow-950 shadow-lg sm:w-80"
+              >
+                <p>
+                  Review flagged marketplace listings, mechanic verifications, and community content with immutable audit logging and WCAG AA accessibility safeguards.
+                </p>
+              </div>
+            </>
+          )}
+        </div>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <h1 className="text-xl font-bold tracking-tight sm:text-2xl">
               Administrator & Moderation Center
             </h1>
-            <p className="mt-1 max-w-2xl text-sm text-primary-100">
-              Review flagged marketplace listings, mechanic verifications, and community content with immutable audit logging and WCAG AA accessibility safeguards.
-            </p>
+            <Badge className="border-white/25 bg-white/15 text-white">
+              <ShieldCheck className="mr-1 h-3.5 w-3.5" aria-hidden="true" />
+              Role: {effectiveRole}
+            </Badge>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2.5">
-            <Button
-              variant="secondary"
-              onClick={() => setShowReportComposer((prev) => !prev)}
-            >
-              <Plus className="h-4 w-4" aria-hidden="true" />
-              {showReportComposer ? 'Close Report Form' : 'File Safety Report'}
-            </Button>
-          </div>
+          <Button
+            variant="secondary"
+            onClick={() => setShowReportComposer((prev) => !prev)}
+          >
+            <Plus className="h-4 w-4" aria-hidden="true" />
+            {showReportComposer ? 'Close Report Form' : 'File Safety Report'}
+          </Button>
         </div>
       </div>
 
@@ -537,12 +561,12 @@ export function AdminModerationView({
             </p>
           </CardContent>
         </Card>
-        <Card className="border-amber-200 bg-amber-50/40">
+        <Card className="border-yellow-200 bg-yellow-50/40">
           <CardContent className="p-4">
-            <p className="text-xs font-semibold text-amber-800">Open Reports</p>
+            <p className="text-xs font-semibold text-yellow-800">Open Reports</p>
             <p
               data-testid="open-reports-count"
-              className="mt-1 text-2xl font-bold text-amber-900"
+              className="mt-1 text-2xl font-bold text-yellow-900"
             >
               {overview.openReportsCount}
             </p>
@@ -776,4 +800,3 @@ export function AdminModerationView({
 }
 
 export default AdminModerationView;
-

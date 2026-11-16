@@ -4,13 +4,18 @@ import {
   Get,
   HttpCode,
   HttpStatus,
+  MessageEvent,
   Param,
   Patch,
   Post,
   Query,
+  Req,
+  Sse,
   UseGuards,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger';
+import type { Request } from 'express';
+import { Observable } from 'rxjs';
 import type {
   CommunityChatMessageItem,
   CommunityDetailResponse,
@@ -24,30 +29,56 @@ import {
   JwtAuthGuard,
   OptionalJwtAuthGuard,
 } from '../auth/guards/jwt-auth.guard';
-import type { JwtAccessPayload } from '../auth/token.service';
+import { TokenService, type JwtAccessPayload } from '../auth/token.service';
 import { CommunitiesService } from './communities.service';
 import { CreateCommunityDto, CreateCommunityMessageDto } from './dto/community.dto';
 
 @ApiTags('communities')
 @Controller('communities')
 export class CommunitiesController {
-  constructor(private readonly communitiesService: CommunitiesService) {}
+  constructor(
+    private readonly communitiesService: CommunitiesService,
+    private readonly tokenService: TokenService,
+  ) {}
 
   @Get()
   @UseGuards(OptionalJwtAuthGuard)
   @ApiOperation({ summary: 'List and search riding communities with membership status' })
   @ApiQuery({ name: 'search', required: false })
-  @ApiQuery({ name: 'category', required: false })
   async listCommunities(
     @Query('search') search?: string,
-    @Query('category') category?: string,
     @CurrentUser() user?: JwtAccessPayload | null,
   ): Promise<CommunityItem[]> {
     return this.communitiesService.listCommunities({
       search,
-      category,
       viewerId: user?.sub,
     });
+  }
+
+  @Sse('stream')
+  @ApiOperation({
+    summary: 'Real-time Server-Sent Events stream for community group chat messages',
+  })
+  streamCommunityMessages(
+    @Query('token') queryToken: string | undefined,
+    @Req() req: Request,
+  ): Observable<MessageEvent> {
+    const authHeader = req.headers.authorization;
+    const rawToken =
+      queryToken?.trim() ||
+      (authHeader?.startsWith('Bearer ') ? authHeader.slice(7).trim() : '');
+
+    let viewerId: string | undefined;
+    if (rawToken) {
+      try {
+        const payload = this.tokenService.verifyAccessToken(rawToken);
+        viewerId = payload.sub;
+      } catch {
+        // Proceed as anonymous viewer for public communities
+      }
+    }
+
+    return this.communitiesService.subscribeToStream(viewerId);
   }
 
   @Get(':idOrSlug')

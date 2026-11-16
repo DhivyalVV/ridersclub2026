@@ -14,7 +14,6 @@ export class MessagingRealtimeService {
     return this.eventSubject.asObservable().pipe(
       filter((event) => event.recipientUserIds.includes(userId)),
       map((event) => ({
-        type: event.type,
         data: event,
       })),
     );

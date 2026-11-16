@@ -27,8 +27,6 @@ interface GarageVehicleRecordWithRelations {
   year: number;
   registrationLabel: string | null;
   currentOdometerKm: number;
-  nextReminderLabel: string | null;
-  nextServiceOdometerKm: number | null;
   createdAt: Date;
   updatedAt: Date;
   serviceRecords: Array<{
@@ -111,15 +109,6 @@ export class GarageService {
       throw new BadRequestException('Odometer reading cannot be negative.');
     }
 
-    if (
-      dto.nextServiceOdometerKm !== undefined &&
-      dto.nextServiceOdometerKm < dto.currentOdometerKm
-    ) {
-      throw new BadRequestException(
-        'Next service reminder odometer must be greater than or equal to current odometer.',
-      );
-    }
-
     const created = await this.prisma.garageVehicle.create({
       data: {
         ownerId,
@@ -129,8 +118,6 @@ export class GarageService {
         year: dto.year,
         registrationLabel: dto.registrationLabel?.trim() || null,
         currentOdometerKm: dto.currentOdometerKm,
-        nextReminderLabel: dto.nextReminderLabel?.trim() || null,
-        nextServiceOdometerKm: dto.nextServiceOdometerKm ?? null,
       },
       include: {
         serviceRecords: true,
@@ -180,12 +167,6 @@ export class GarageService {
           : {}),
         ...(dto.currentOdometerKm !== undefined
           ? { currentOdometerKm: dto.currentOdometerKm }
-          : {}),
-        ...(dto.nextReminderLabel !== undefined
-          ? { nextReminderLabel: dto.nextReminderLabel.trim() || null }
-          : {}),
-        ...(dto.nextServiceOdometerKm !== undefined
-          ? { nextServiceOdometerKm: dto.nextServiceOdometerKm }
           : {}),
       },
       include: {
@@ -392,8 +373,6 @@ export class GarageService {
       year: record.year,
       registrationLabel: record.registrationLabel,
       currentOdometerKm: record.currentOdometerKm,
-      nextReminderLabel: record.nextReminderLabel,
-      nextServiceOdometerKm: record.nextServiceOdometerKm,
       notes,
       serviceHistory,
       createdAt: record.createdAt.toISOString(),
@@ -425,9 +404,6 @@ export class GarageService {
           year: 2025,
           registrationLabel: 'KA-01-RC-4500',
           currentOdometerKm: 11420,
-          nextReminderLabel:
-            'Chain slack & valve clearance check at 12,000 km',
-          nextServiceOdometerKm: 12000,
           notes: {
             create: [
               {
@@ -471,8 +447,6 @@ export class GarageService {
           year: 2023,
           registrationLabel: 'KA-03-TS-2023',
           currentOdometerKm: 28900,
-          nextReminderLabel: 'Annual Haldex/DSG fluid inspection at 30,000 km',
-          nextServiceOdometerKm: 30000,
           notes: {
             create: [
               {

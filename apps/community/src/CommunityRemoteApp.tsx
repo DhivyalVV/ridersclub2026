@@ -2,19 +2,16 @@ import * as React from 'react';
 import {
   BookOpen,
   CheckCircle2,
+  ChevronLeft,
   Clock,
-  Compass,
   Edit3,
-  Globe,
   Heart,
-  Lock,
+  Info,
   LogOut,
   MessageCircle,
   Plus,
   Send,
-  ShieldCheck,
   Trash2,
-  Users,
   X,
   Search,
 } from 'lucide-react';
@@ -62,7 +59,6 @@ const INITIAL_COMMUNITIES: CommunityItem[] = [
       'Weekend trail rides, monsoon preparedness checklists, and technical terrain mentorship across Karnataka, Goa, and Maharashtra.',
     memberCount: 1420,
     visibility: CommunityVisibility.PUBLIC,
-    category: 'Adventure & Touring',
     viewerMembershipStatus: null,
     viewerRole: null,
     createdAt: new Date().toISOString(),
@@ -85,7 +81,6 @@ const INITIAL_COMMUNITIES: CommunityItem[] = [
       'Carburetor tuning, electrical wiring schematics, and restoration logs for twins, singles, and modern classic cars.',
     memberCount: 865,
     visibility: CommunityVisibility.PUBLIC,
-    category: 'Maintenance & Builds',
     viewerMembershipStatus: null,
     viewerRole: null,
     createdAt: new Date().toISOString(),
@@ -108,7 +103,6 @@ const INITIAL_COMMUNITIES: CommunityItem[] = [
       'Invite-only group for verified sportbike and performance sedan owners organizing track sessions and telemetry reviews.',
     memberCount: 210,
     visibility: CommunityVisibility.PRIVATE,
-    category: 'Track & Performance',
     viewerMembershipStatus: null,
     viewerRole: null,
     createdAt: new Date().toISOString(),
@@ -231,23 +225,65 @@ export function CommunityRemoteApp({
   const [communities, setCommunities] = React.useState<CommunityItem[]>(INITIAL_COMMUNITIES);
   const [blogs, setBlogs] = React.useState<BlogPostItem[]>(INITIAL_BLOGS);
   const [statusBanner, setStatusBanner] = React.useState<string | null>(null);
+  const [showHeaderInfo, setShowHeaderInfo] = React.useState(false);
 
   // Create Community Modal State
   const [showCreateCommunity, setShowCreateCommunity] = React.useState(false);
   const [newCommunityName, setNewCommunityName] = React.useState('');
-  const [newCommunityCategory, setNewCommunityCategory] = React.useState('Adventure & Touring');
   const [newCommunityVisibility, setNewCommunityVisibility] = React.useState<CommunityVisibility>(
     CommunityVisibility.PUBLIC,
   );
   const [newCommunityDescription, setNewCommunityDescription] = React.useState('');
+  const [createCommunityError, setCreateCommunityError] = React.useState<string | null>(null);
 
   // Active Community Chat & Roster Drawer/Panel State
   const [activeCommunity, setActiveCommunity] = React.useState<CommunityItem | null>(null);
+  const [showCommunityMembers, setShowCommunityMembers] = React.useState(false);
   const [communityMembers, setCommunityMembers] = React.useState<CommunityMemberItem[]>([]);
   const [pendingMembers, setPendingMembers] = React.useState<CommunityMemberItem[]>([]);
   const [communityMessages, setCommunityMessages] = React.useState<CommunityChatMessageItem[]>([]);
+  const [lastMessageByCommunity, setLastMessageByCommunity] = React.useState<Record<string, string>>(
+    () => {
+      const defaults = Object.fromEntries(
+        INITIAL_COMMUNITIES.map((c) => [
+          c.id,
+          `${c.founder.displayName}: Welcome to ${c.name}! Coordinate rides, share technical advice, or click any member to start a 1:1 private chat.`,
+        ]),
+      );
+      try {
+        const stored = window.localStorage.getItem('ridersclub:community_last_messages');
+        if (stored) {
+          return { ...defaults, ...(JSON.parse(stored) as Record<string, string>) };
+        }
+      } catch {
+        // Ignore storage read error
+      }
+      return defaults;
+    },
+  );
   const [chatAccessError, setChatAccessError] = React.useState<string | null>(null);
   const [chatMessageDraft, setChatMessageDraft] = React.useState('');
+  const communityMessagesContainerRef = React.useRef<HTMLDivElement | null>(null);
+
+  React.useEffect(() => {
+    if (activeCommunity && !showCommunityMembers) {
+      const container = communityMessagesContainerRef.current;
+      if (container) {
+        container.scrollTop = container.scrollHeight;
+      }
+    }
+  }, [activeCommunity, showCommunityMembers, communityMessages.length]);
+
+  React.useEffect(() => {
+    try {
+      window.localStorage.setItem(
+        'ridersclub:community_last_messages',
+        JSON.stringify(lastMessageByCommunity),
+      );
+    } catch {
+      // Ignore storage write error
+    }
+  }, [lastMessageByCommunity]);
 
   // Create / Edit Blog Modal State
   const [showBlogComposer, setShowBlogComposer] = React.useState(false);
@@ -263,6 +299,7 @@ export function CommunityRemoteApp({
 
   React.useEffect(() => {
     setSearchQuery('');
+    setShowHeaderInfo(false);
   }, [initialSection]);
 
   const loadLiveCommunitiesAndBlogs = React.useCallback(async () => {
@@ -281,6 +318,15 @@ export function CommunityRemoteApp({
         const commData = (await commRes.json()) as CommunityItem[];
         if (Array.isArray(commData) && commData.length > 0) {
           setCommunities(commData);
+          setLastMessageByCommunity((prev) => {
+            const next = { ...prev };
+            for (const c of commData) {
+              if (c.lastMessage) {
+                next[c.id] = `${c.lastMessage.sender.displayName}: ${c.lastMessage.body}`;
+              }
+            }
+            return next;
+          });
         }
       }
 
@@ -299,15 +345,106 @@ export function CommunityRemoteApp({
     void loadLiveCommunitiesAndBlogs();
   }, [loadLiveCommunitiesAndBlogs]);
 
+  const activeCommunityIdRef = React.useRef<string | null>(null);
+  React.useEffect(() => {
+    activeCommunityIdRef.current = activeCommunity?.id ?? null;
+  }, [activeCommunity]);
+
+  // Real-time community chat updates via Server-Sent Events (SSE) and cross-tab BroadcastChannel
+  React.useEffect(() => {
+    const applyIncomingMessage = (communityId: string, msg: CommunityChatMessageItem) => {
+      setLastMessageByCommunity((prev) => ({
+        ...prev,
+        [communityId]: `${msg.sender.displayName}: ${msg.body}`,
+      }));
+
+      setCommunityMessages((prev) => {
+        if (activeCommunityIdRef.current !== communityId) {
+          return prev;
+        }
+        if (prev.some((existing) => existing.id === msg.id)) {
+          return prev;
+        }
+        return [...prev, msg];
+      });
+    };
+
+    let eventSource: EventSource | null = null;
+    if (typeof window.EventSource !== 'undefined') {
+      try {
+        const token = getStoredToken();
+        const streamUrl = token
+          ? `${API_BASE_URL}/communities/stream?token=${encodeURIComponent(token)}`
+          : `${API_BASE_URL}/communities/stream`;
+        eventSource = new window.EventSource(streamUrl);
+        const handleCommunitySseMessage = (evt: MessageEvent) => {
+          try {
+            const payload = JSON.parse(evt.data as string) as {
+              type?: string;
+              communityId?: string;
+              message?: CommunityChatMessageItem;
+            };
+            if (
+              payload.type === 'community_message.created' &&
+              payload.communityId &&
+              payload.message
+            ) {
+              applyIncomingMessage(payload.communityId, payload.message);
+            }
+          } catch {
+            // Ignore malformed SSE payload
+          }
+        };
+        eventSource.onmessage = handleCommunitySseMessage;
+        eventSource.addEventListener(
+          'community_message.created',
+          handleCommunitySseMessage as EventListener,
+        );
+      } catch {
+        // Ignore EventSource connection failure in test/offline mode
+      }
+    }
+
+    let channel: BroadcastChannel | null = null;
+    if (typeof window.BroadcastChannel !== 'undefined') {
+      try {
+        channel = new window.BroadcastChannel('ridersclub_community_chat');
+        channel.onmessage = (evt) => {
+          const data = evt.data as {
+            communityId?: string;
+            message?: CommunityChatMessageItem;
+          } | null;
+          if (data?.communityId && data.message) {
+            applyIncomingMessage(data.communityId, data.message);
+          }
+        };
+      } catch {
+        // Ignore BroadcastChannel error
+      }
+    }
+
+    return () => {
+      eventSource?.close();
+      channel?.close();
+    };
+  }, []);
+
   const normalizedSearch = searchQuery.trim().toLowerCase();
+
+  const myCommunities = communities.filter(
+    (c) =>
+      c.viewerMembershipStatus === CommunityMembershipStatus.APPROVED ||
+      c.viewerMembershipStatus === CommunityMembershipStatus.PENDING,
+  );
 
   const filteredCommunities = communities.filter(
     (c) =>
       !normalizedSearch ||
       c.name.toLowerCase().includes(normalizedSearch) ||
-      c.category.toLowerCase().includes(normalizedSearch) ||
       c.description.toLowerCase().includes(normalizedSearch),
   );
+
+  const displayedCommunities = normalizedSearch ? filteredCommunities : myCommunities;
 
   const filteredBlogs = blogs.filter(
     (b) =>
@@ -325,6 +462,29 @@ export function CommunityRemoteApp({
 
     const token = getStoredToken();
     const currentUser = getStoredUser();
+    const activeFounderId = currentUser?.id ?? 'local-rider';
+    const normalizedTargetName = trimmedName.toLowerCase();
+
+    const isDuplicate =
+      newCommunityVisibility === CommunityVisibility.PUBLIC
+        ? communities.some(
+            (c) =>
+              c.visibility === CommunityVisibility.PUBLIC &&
+              c.name.trim().toLowerCase() === normalizedTargetName,
+          )
+        : communities.some(
+            (c) =>
+              c.visibility === CommunityVisibility.PRIVATE &&
+              c.founder.id === activeFounderId &&
+              c.name.trim().toLowerCase() === normalizedTargetName,
+          );
+
+    if (isDuplicate) {
+      setCreateCommunityError('Community already present, cannot create duplicate.');
+      return;
+    }
+
+    setCreateCommunityError(null);
 
     if (token) {
       try {
@@ -336,7 +496,6 @@ export function CommunityRemoteApp({
           },
           body: JSON.stringify({
             name: trimmedName,
-            category: newCommunityCategory.trim() || 'General Riding',
             visibility: newCommunityVisibility,
             description: trimmedDesc,
           }),
@@ -344,15 +503,34 @@ export function CommunityRemoteApp({
 
         if (res.ok) {
           const created = (await res.json()) as CommunityItem;
-          setCommunities((prev) => [created, ...prev]);
+          const normalizedCreated: CommunityItem = {
+            ...created,
+            viewerMembershipStatus:
+              created.viewerMembershipStatus ?? CommunityMembershipStatus.APPROVED,
+            viewerRole: created.viewerRole ?? CommunityMemberRole.FOUNDER,
+          };
+          setCommunities((prev) => [normalizedCreated, ...prev]);
           setShowCreateCommunity(false);
           setNewCommunityName('');
           setNewCommunityDescription('');
+          setCreateCommunityError(null);
+          setSearchQuery('');
           setStatusBanner(`Created community "${created.name}" and assigned you as Founder.`);
           return;
         }
+
+        if (res.status >= 400 && res.status < 500) {
+          const errPayload = (await res.json().catch(() => null)) as {
+            message?: string | string[];
+          } | null;
+          const errMsg = Array.isArray(errPayload?.message)
+            ? errPayload.message.join(', ')
+            : errPayload?.message || 'Community already present, cannot create duplicate.';
+          setCreateCommunityError(errMsg);
+          return;
+        }
       } catch {
-        // Fallback to local state update below
+        // Fallback to local state update below when offline
       }
     }
 
@@ -361,14 +539,13 @@ export function CommunityRemoteApp({
       slug: trimmedName.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
       name: trimmedName,
       description: trimmedDesc,
-      category: newCommunityCategory.trim() || 'General Riding',
       visibility: newCommunityVisibility,
       memberCount: 1,
       viewerMembershipStatus: CommunityMembershipStatus.APPROVED,
       viewerRole: CommunityMemberRole.FOUNDER,
       createdAt: new Date().toISOString(),
       founder: {
-        id: currentUser?.id ?? 'local-rider',
+        id: activeFounderId,
         displayName: currentUser?.profile.displayName ?? 'You (Rider Founder)',
         username: currentUser?.profile.username ?? 'rider_founder',
         avatarUrl: currentUser?.profile.avatarUrl ?? null,
@@ -383,6 +560,8 @@ export function CommunityRemoteApp({
     setShowCreateCommunity(false);
     setNewCommunityName('');
     setNewCommunityDescription('');
+    setCreateCommunityError(null);
+    setSearchQuery('');
     setStatusBanner(`Created community "${fallbackCommunity.name}".`);
   };
 
@@ -419,6 +598,19 @@ export function CommunityRemoteApp({
                 : c,
             ),
           );
+          setActiveCommunity((prev) =>
+            prev && prev.id === community.id
+              ? {
+                  ...prev,
+                  viewerMembershipStatus: data.status,
+                  viewerRole: data.role,
+                  memberCount:
+                    data.status === CommunityMembershipStatus.APPROVED
+                      ? prev.memberCount + 1
+                      : prev.memberCount,
+                }
+              : prev,
+          );
           setStatusBanner(
             data.status === CommunityMembershipStatus.APPROVED
               ? `Joined ${community.name}! You now have access to Community Chat.`
@@ -445,6 +637,19 @@ export function CommunityRemoteApp({
             }
           : c,
       ),
+    );
+    setActiveCommunity((prev) =>
+      prev && prev.id === community.id
+        ? {
+            ...prev,
+            viewerMembershipStatus: expectedStatus,
+            viewerRole: CommunityMemberRole.MEMBER,
+            memberCount:
+              expectedStatus === CommunityMembershipStatus.APPROVED
+                ? prev.memberCount + 1
+                : prev.memberCount,
+          }
+        : prev,
     );
     setStatusBanner(
       expectedStatus === CommunityMembershipStatus.APPROVED
@@ -481,11 +686,14 @@ export function CommunityRemoteApp({
           : c,
       ),
     );
+    setActiveCommunity((prev) => (prev?.id === community.id ? null : prev));
+    setShowCommunityMembers(false);
     setStatusBanner(`Left ${community.name}.`);
   };
 
   const handleOpenCommunityHub = async (community: CommunityItem) => {
     setActiveCommunity(community);
+    setShowCommunityMembers(false);
     setChatAccessError(null);
     setCommunityMembers([
       {
@@ -541,6 +749,13 @@ export function CommunityRemoteApp({
       if (messagesRes.ok) {
         const msgs = (await messagesRes.json()) as CommunityChatMessageItem[];
         setCommunityMessages(msgs);
+        const latest = msgs[msgs.length - 1];
+        if (latest) {
+          setLastMessageByCommunity((prev) => ({
+            ...prev,
+            [community.id]: `${latest.sender.displayName}: ${latest.body}`,
+          }));
+        }
         setChatAccessError(null);
       } else if (messagesRes.status === 403) {
         setCommunityMessages([]);
@@ -577,7 +792,22 @@ export function CommunityRemoteApp({
         );
         if (res.ok) {
           const msg = (await res.json()) as CommunityChatMessageItem;
-          setCommunityMessages((prev) => [...prev, msg]);
+          setCommunityMessages((prev) =>
+            prev.some((existing) => existing.id === msg.id) ? prev : [...prev, msg],
+          );
+          setLastMessageByCommunity((prev) => ({
+            ...prev,
+            [activeCommunity.id]: `${msg.sender.displayName}: ${msg.body}`,
+          }));
+          try {
+            if (typeof window.BroadcastChannel !== 'undefined') {
+              const ch = new window.BroadcastChannel('ridersclub_community_chat');
+              ch.postMessage({ communityId: activeCommunity.id, message: msg });
+              ch.close();
+            }
+          } catch {
+            // Ignore broadcast error
+          }
           setChatMessageDraft('');
           return;
         }
@@ -603,6 +833,19 @@ export function CommunityRemoteApp({
       },
     };
     setCommunityMessages((prev) => [...prev, fallbackMsg]);
+    setLastMessageByCommunity((prev) => ({
+      ...prev,
+      [activeCommunity.id]: `${fallbackMsg.sender.displayName}: ${fallbackMsg.body}`,
+    }));
+    try {
+      if (typeof window.BroadcastChannel !== 'undefined') {
+        const ch = new window.BroadcastChannel('ridersclub_community_chat');
+        ch.postMessage({ communityId: activeCommunity.id, message: fallbackMsg });
+        ch.close();
+      }
+    } catch {
+      // Ignore broadcast error
+    }
     setChatMessageDraft('');
   };
 
@@ -940,44 +1183,76 @@ export function CommunityRemoteApp({
       }
       className="space-y-6"
     >
-      {/* Header Banner */}
-      <div className="rounded-2xl bg-gradient-to-r from-primary-900 via-primary-800 to-primary-700 p-5 text-white shadow-md sm:p-7">
-        <div className="flex flex-col justify-between gap-4 lg:flex-row lg:items-end">
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
+      {/* Header Banner (hidden when a full-screen community chat is open) */}
+      {!(activeSection === 'communities' && activeCommunity) && (
+        <div className="relative rounded-2xl bg-gradient-to-r from-primary-900 via-primary-800 to-primary-700 px-5 py-4 pr-12 text-white shadow-md sm:px-6 sm:pr-14">
+          <div className="absolute right-2.5 top-2.5">
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              aria-label="Toggle page description"
+              aria-expanded={showHeaderInfo}
+              title="Page information"
+              onClick={() => setShowHeaderInfo((prev) => !prev)}
+              className="h-7 w-7 text-primary-100 hover:bg-white/15 hover:text-white"
+            >
+              <Info className="h-4 w-4" aria-hidden="true" />
+            </Button>
+            {showHeaderInfo && (
+              <>
+                <div
+                  className="fixed inset-0 z-40"
+                  aria-hidden="true"
+                  onClick={() => setShowHeaderInfo(false)}
+                />
+                <div
+                  role="dialog"
+                  aria-label="Page information"
+                  className="absolute right-0 top-full z-50 mt-1.5 w-72 rounded-xl border border-yellow-200 bg-yellow-50 p-3.5 text-xs leading-relaxed text-yellow-950 shadow-lg sm:w-80"
+                >
+                  <p>
+                    {activeSection === 'communities'
+                      ? 'Connect with regional riding chapters, join real-time community discussions, and click any member profile to initiate a 1:1 private conversation in the Shell.'
+                      : 'Read and publish long-form maintenance guides, high-altitude travel logs, and pre-purchase inspection checklists. Click any author profile to initiate a 1:1 private conversation in the Shell.'}
+                  </p>
+                </div>
+              </>
+            )}
+          </div>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <h1 className="text-xl font-bold tracking-tight sm:text-2xl">
               {activeSection === 'communities'
                 ? 'Riding Communities'
                 : 'Rider Blogs & Technical Guides'}
             </h1>
-            <p className="mt-1.5 max-w-2xl text-sm text-primary-100 sm:text-base">
-              {activeSection === 'communities'
-                ? 'Connect with regional riding chapters, join real-time community discussions, and click any member profile to initiate a 1:1 private conversation in the Shell.'
-                : 'Read and publish long-form maintenance guides, high-altitude travel logs, and pre-purchase inspection checklists. Click any author profile to initiate a 1:1 private conversation in the Shell.'}
-            </p>
-          </div>
-          <div className="flex flex-wrap gap-2.5">
-            {activeSection === 'communities' ? (
-              <Button
-                variant="secondary"
-                className="bg-white text-primary-900 hover:bg-primary-50"
-                onClick={() => setShowCreateCommunity(true)}
-              >
-                <Plus className="h-4 w-4" aria-hidden="true" />
-                New Community
-              </Button>
-            ) : (
-              <Button
-                variant="secondary"
-                className="bg-white text-primary-900 hover:bg-primary-50"
-                onClick={openNewBlogComposer}
-              >
-                <BookOpen className="h-4 w-4" aria-hidden="true" />
-                Write Blog
-              </Button>
-            )}
+            <div className="flex flex-wrap items-center gap-2">
+              {activeSection === 'communities' ? (
+                <Button
+                  variant="secondary"
+                  className="bg-yellow-100 text-yellow-950 hover:bg-yellow-200"
+                  onClick={() => {
+                    setCreateCommunityError(null);
+                    setShowCreateCommunity(true);
+                  }}
+                >
+                  <Plus className="h-4 w-4" aria-hidden="true" />
+                  New Community
+                </Button>
+              ) : (
+                <Button
+                  variant="secondary"
+                  className="bg-yellow-100 text-yellow-950 hover:bg-yellow-200"
+                  onClick={openNewBlogComposer}
+                >
+                  <BookOpen className="h-4 w-4" aria-hidden="true" />
+                  Write Blog
+                </Button>
+              )}
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* Status Notification Banner */}
       {statusBanner ? (
@@ -1014,14 +1289,25 @@ export function CommunityRemoteApp({
               size="sm"
               variant="ghost"
               aria-label="Close community form"
-              onClick={() => setShowCreateCommunity(false)}
+              onClick={() => {
+                setShowCreateCommunity(false);
+                setCreateCommunityError(null);
+              }}
             >
               <X className="h-4 w-4" />
             </Button>
           </CardHeader>
           <CardContent>
             <form onSubmit={(e) => void handleCreateCommunity(e)} className="space-y-4">
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+              {createCommunityError ? (
+                <div
+                  role="alert"
+                  className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-xs font-semibold text-rose-800"
+                >
+                  {createCommunityError}
+                </div>
+              ) : null}
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div>
                   <label
                     htmlFor="comm-name-input"
@@ -1034,25 +1320,11 @@ export function CommunityRemoteApp({
                     type="text"
                     required
                     value={newCommunityName}
-                    onChange={(e) => setNewCommunityName(e.target.value)}
+                    onChange={(e) => {
+                      setNewCommunityName(e.target.value);
+                      if (createCommunityError) setCreateCommunityError(null);
+                    }}
                     placeholder="e.g., Nilgiris Weekend Tourers"
-                    className="mt-1 h-10 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm"
-                  />
-                </div>
-                <div>
-                  <label
-                    htmlFor="comm-category-input"
-                    className="block text-xs font-semibold uppercase tracking-wider text-slate-600"
-                  >
-                    Category
-                  </label>
-                  <input
-                    id="comm-category-input"
-                    type="text"
-                    required
-                    value={newCommunityCategory}
-                    onChange={(e) => setNewCommunityCategory(e.target.value)}
-                    placeholder="Adventure & Touring"
                     className="mt-1 h-10 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm"
                   />
                 </div>
@@ -1066,9 +1338,10 @@ export function CommunityRemoteApp({
                   <select
                     id="comm-visibility-select"
                     value={newCommunityVisibility}
-                    onChange={(e) =>
-                      setNewCommunityVisibility(e.target.value as CommunityVisibility)
-                    }
+                    onChange={(e) => {
+                      setNewCommunityVisibility(e.target.value as CommunityVisibility);
+                      if (createCommunityError) setCreateCommunityError(null);
+                    }}
                     className="mt-1 h-10 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm"
                   >
                     <option value={CommunityVisibility.PUBLIC}>
@@ -1101,7 +1374,10 @@ export function CommunityRemoteApp({
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={() => setShowCreateCommunity(false)}
+                  onClick={() => {
+                    setShowCreateCommunity(false);
+                    setCreateCommunityError(null);
+                  }}
                 >
                   Cancel
                 </Button>
@@ -1218,160 +1494,6 @@ export function CommunityRemoteApp({
                 </Button>
               </div>
             </form>
-          </CardContent>
-        </Card>
-      ) : null}
-
-      {/* Active Community Chat & Roster Panel */}
-      {activeCommunity ? (
-        <Card className="border-2 border-primary-600 shadow-lg">
-          <CardHeader className="border-b border-slate-100 bg-slate-50/70">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div>
-                <div className="flex items-center gap-2">
-                  <Badge variant="secondary">{activeCommunity.category}</Badge>
-                  <Badge variant="outline">
-                    {activeCommunity.visibility === CommunityVisibility.PUBLIC
-                      ? 'Public Community Chat'
-                      : 'Private Community Chat'}
-                  </Badge>
-                </div>
-                <CardTitle className="mt-1.5 text-xl">{activeCommunity.name}</CardTitle>
-              </div>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => setActiveCommunity(null)}
-              >
-                <X className="h-4 w-4" aria-hidden="true" />
-                Close Community Hub
-              </Button>
-            </div>
-          </CardHeader>
-
-          <CardContent className="grid grid-cols-1 gap-6 pt-5 lg:grid-cols-3">
-            {/* Left 2 Columns: Persistent Community Chat */}
-            <div className="space-y-4 lg:col-span-2">
-              <h3 className="text-sm font-semibold uppercase tracking-wider text-slate-500">
-                Community Group Chat
-              </h3>
-
-              {chatAccessError ? (
-                <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
-                  <p className="font-semibold">Private Community Chat Locked</p>
-                  <p className="mt-1 text-xs">{chatAccessError}</p>
-                </div>
-              ) : (
-                <>
-                  <div className="max-h-80 space-y-3 overflow-y-auto rounded-xl border border-slate-200 bg-slate-50 p-4">
-                    {communityMessages.length === 0 ? (
-                      <p className="text-center text-xs text-slate-500">
-                        No messages yet. Start the conversation below!
-                      </p>
-                    ) : (
-                      communityMessages.map((msg) => (
-                        <div
-                          key={msg.id}
-                          className="rounded-xl border border-slate-200/80 bg-white p-3 shadow-sm"
-                        >
-                          <div className="flex flex-wrap items-center justify-between gap-2">
-                            <div className="flex items-center gap-2">
-                              <Avatar
-                                alt={msg.sender.displayName}
-                                fallbackText={msg.sender.displayName}
-                                src={msg.sender.avatarUrl}
-                                size="sm"
-                              />
-                              <div>
-                                <p className="text-xs font-semibold text-slate-900">
-                                  {msg.sender.displayName}{' '}
-                                  <span className="font-normal text-slate-500">
-                                    @{msg.sender.username}
-                                  </span>
-                                </p>
-                              </div>
-                            </div>
-                            <MessageUserButton
-                              user={msg.sender}
-                              contextLabel={`Community Chat: ${activeCommunity.name}`}
-                              size="sm"
-                              variant="ghost"
-                            />
-                          </div>
-                          <p className="mt-2 text-sm text-slate-700">{msg.body}</p>
-                        </div>
-                      ))
-                    )}
-                  </div>
-
-                  <form
-                    onSubmit={(e) => void handleSendCommunityMessage(e)}
-                    className="flex gap-2"
-                  >
-                    <input
-                      type="text"
-                      value={chatMessageDraft}
-                      onChange={(e) => setChatMessageDraft(e.target.value)}
-                      placeholder={`Message ${activeCommunity.name}...`}
-                      aria-label="Community chat message"
-                      className="h-10 flex-1 rounded-xl border border-slate-300 bg-white px-3 text-sm"
-                    />
-                    <Button type="submit" size="sm" className="h-10 px-4">
-                      <Send className="h-4 w-4" aria-hidden="true" />
-                      Send
-                    </Button>
-                  </form>
-                </>
-              )}
-            </div>
-
-            {/* Right Column: Member Roster & Pending Approvals */}
-            <div className="space-y-4">
-              {pendingMembers.length > 0 ? (
-                <div className="rounded-xl border border-amber-200 bg-amber-50/60 p-3">
-                  <h4 className="text-xs font-bold uppercase tracking-wider text-amber-900">
-                    Pending Join Requests ({pendingMembers.length})
-                  </h4>
-                  <div className="mt-2 space-y-2">
-                    {pendingMembers.map((pending) => (
-                      <div
-                        key={pending.id}
-                        className="flex items-center justify-between rounded-lg bg-white p-2 text-xs shadow-sm"
-                      >
-                        <div>
-                          <p className="font-semibold text-slate-900">
-                            {pending.user.displayName}
-                          </p>
-                          <p className="text-slate-500">@{pending.user.username}</p>
-                        </div>
-                        <Button
-                          size="sm"
-                          onClick={() => void handleApprovePendingMember(pending)}
-                        >
-                          Approve
-                        </Button>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ) : null}
-
-              <div>
-                <h3 className="mb-2 text-sm font-semibold uppercase tracking-wider text-slate-500">
-                  Approved Members ({communityMembers.length})
-                </h3>
-                <div className="max-h-72 space-y-2 overflow-y-auto pr-1">
-                  {communityMembers.map((member) => (
-                    <UserProfileCard
-                      key={member.id}
-                      user={member.user}
-                      contextLabel={`Community Member: ${activeCommunity.name}`}
-                      compact
-                    />
-                  ))}
-                </div>
-              </div>
-            </div>
           </CardContent>
         </Card>
       ) : null}
@@ -1515,225 +1637,508 @@ export function CommunityRemoteApp({
         </Card>
       ) : null}
 
-      {/* Controls Bar: Section Count Summary + Search (No internal tab switcher) */}
-      <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
-        <div className="inline-flex items-center gap-2 text-sm font-semibold text-slate-700">
-          {activeSection === 'communities' ? (
-            <>
-              <Compass className="h-4 w-4 text-primary-600" aria-hidden="true" />
-              <span>Showing {filteredCommunities.length} Riding Communities</span>
-            </>
-          ) : (
-            <>
-              <BookOpen className="h-4 w-4 text-primary-600" aria-hidden="true" />
-              <span>Showing {filteredBlogs.length} Rider Blogs</span>
-            </>
-          )}
-        </div>
-
-        <div className="relative w-full sm:w-80">
-          <Search
-            className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400"
-            aria-hidden="true"
-          />
-          <input
-            type="search"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder={
-              activeSection === 'communities'
-                ? 'Search communities or categories...'
-                : 'Search blogs or tags...'
-            }
-            aria-label={
-              activeSection === 'communities'
-                ? 'Search communities'
-                : 'Search blogs'
-            }
-            className="h-10 w-full rounded-xl border border-slate-300 bg-white pl-9 pr-4 text-sm text-slate-900 placeholder:text-slate-400 focus:border-primary-600 focus:outline-none focus:ring-2 focus:ring-primary-600/20"
-          />
-        </div>
-      </div>
-
       {/* Dedicated Section Content */}
       {activeSection === 'communities' ? (
-        <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
-          {filteredCommunities.map((community) => (
-            <Card key={community.id} className="flex flex-col justify-between">
-              <CardHeader>
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <Badge variant="secondary">{community.category}</Badge>
-                  <div className="flex items-center gap-1.5">
-                    {community.viewerMembershipStatus === CommunityMembershipStatus.APPROVED ? (
-                      <Badge variant="outline" className="border-primary-200 bg-primary-50 text-primary-700">
-                        <ShieldCheck className="h-3 w-3" aria-hidden="true" />
-                        {community.viewerRole === CommunityMemberRole.FOUNDER
-                          ? 'Founder'
-                          : 'Member'}
-                      </Badge>
-                    ) : community.viewerMembershipStatus === CommunityMembershipStatus.PENDING ? (
-                      <Badge variant="warning">
-                        <Clock className="h-3 w-3" aria-hidden="true" />
-                        Pending Approval
-                      </Badge>
-                    ) : null}
+        activeCommunity ? (
+          /* Full-Screen Community Chat & Members View (matching 1:1 Direct Chat style) */
+          <div
+            role="dialog"
+            aria-label={`${activeCommunity.name} Community View`}
+            className="fixed inset-0 z-40 flex flex-col bg-slate-50"
+          >
+            {/* Top Header Bar */}
+            <div className="border-b border-slate-200 bg-primary-900 py-3 pl-2 pr-4 text-white shadow-sm sm:px-6 sm:py-3.5">
+              <div className="mx-auto flex max-w-5xl items-center justify-between gap-2 sm:gap-3">
+                <div className="flex min-w-0 items-center gap-1 sm:gap-2.5">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    aria-label={
+                      showCommunityMembers ? 'Back to community chat' : 'Back to communities list'
+                    }
+                    onClick={() => {
+                      if (showCommunityMembers) {
+                        setShowCommunityMembers(false);
+                      } else {
+                        setShowCommunityMembers(false);
+                        setActiveCommunity(null);
+                      }
+                    }}
+                    className="h-8 w-7 shrink-0 px-0 text-white hover:bg-primary-800 hover:text-white sm:h-9 sm:w-9"
+                  >
+                    <ChevronLeft className="h-5 w-5" aria-hidden="true" />
+                  </Button>
 
-                    {community.visibility === CommunityVisibility.PUBLIC ? (
-                      <Badge
-                        variant="outline"
-                        className="border-emerald-200 bg-emerald-50 text-emerald-700"
-                      >
-                        <Globe className="h-3 w-3" aria-hidden="true" />
-                        Public
-                      </Badge>
-                    ) : (
-                      <Badge variant="warning">
-                        <Lock className="h-3 w-3" aria-hidden="true" />
-                        Private
-                      </Badge>
-                    )}
+                  {showCommunityMembers ? (
+                    <div className="flex min-w-0 items-center gap-2 px-1 py-1 sm:gap-2.5 sm:px-2">
+                      <Avatar
+                        alt={activeCommunity.name}
+                        fallbackText={activeCommunity.name}
+                        src={null}
+                        size="sm"
+                      />
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-bold text-white sm:text-base">
+                          {activeCommunity.name}
+                        </p>
+                        <p className="truncate text-[11px] text-primary-200">
+                          {activeCommunity.memberCount.toLocaleString()} members
+                        </p>
+                      </div>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      aria-label={`View members of ${activeCommunity.name}`}
+                      onClick={() => setShowCommunityMembers(true)}
+                      className="flex min-w-0 items-center gap-2 rounded-lg px-1 py-1 text-left transition-colors hover:bg-primary-800 sm:gap-2.5 sm:px-2"
+                    >
+                      <Avatar
+                        alt={activeCommunity.name}
+                        fallbackText={activeCommunity.name}
+                        src={null}
+                        size="sm"
+                      />
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="truncate text-sm font-bold text-white sm:text-base">
+                            {activeCommunity.name}
+                          </span>
+                          <Badge
+                            variant="outline"
+                            className="border-primary-300/40 bg-primary-800 text-[10px] text-primary-100"
+                          >
+                            {activeCommunity.visibility === CommunityVisibility.PUBLIC
+                              ? 'Public'
+                              : 'Private'}
+                          </Badge>
+                        </div>
+                        <p className="truncate text-[11px] text-primary-200">
+                          {activeCommunity.memberCount.toLocaleString()} members • Tap for group info
+                        </p>
+                      </div>
+                    </button>
+                  )}
+                </div>
+
+                {showCommunityMembers ? (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={() => void handleLeaveCommunity(activeCommunity)}
+                    className="shrink-0 border-rose-400 bg-rose-600 text-white hover:bg-rose-700"
+                  >
+                    <LogOut className="h-4 w-4" aria-hidden="true" />
+                    Leave
+                  </Button>
+                ) : null}
+              </div>
+            </div>
+
+            {showCommunityMembers ? (
+              /* Full-Screen Community Members Body */
+              <div className="flex-1 overflow-y-auto">
+                <div className="mx-auto w-full max-w-5xl space-y-4 p-4 sm:p-6">
+                  {pendingMembers.length > 0 ? (
+                    <div className="rounded-2xl border border-yellow-200 bg-yellow-50/70 p-4 shadow-sm">
+                      <h4 className="text-xs font-bold uppercase tracking-wider text-yellow-900">
+                        Pending Join Requests ({pendingMembers.length})
+                      </h4>
+                      <div className="mt-2 space-y-2">
+                        {pendingMembers.map((pending) => (
+                          <div
+                            key={pending.id}
+                            className="flex items-center justify-between rounded-xl bg-white p-3 text-xs shadow-sm"
+                          >
+                            <div>
+                              <p className="font-semibold text-slate-900">
+                                {pending.user.displayName}
+                              </p>
+                              <p className="text-slate-500">@{pending.user.username}</p>
+                            </div>
+                            <Button
+                              size="sm"
+                              onClick={() => void handleApprovePendingMember(pending)}
+                            >
+                              Approve
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ) : null}
+
+                  <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+                    <h3 className="mb-3 text-sm font-semibold uppercase tracking-wider text-slate-500">
+                      Approved Members ({communityMembers.length})
+                    </h3>
+                    <div className="space-y-2">
+                      {communityMembers.map((member) => (
+                        <UserProfileCard
+                          key={member.id}
+                          user={member.user}
+                          contextLabel={`Community Member: ${activeCommunity.name}`}
+                          compact
+                        />
+                      ))}
+                    </div>
                   </div>
                 </div>
-                <CardTitle className="mt-2 text-xl">{community.name}</CardTitle>
-                <CardDescription className="mt-1 leading-relaxed">
-                  {community.description}
-                </CardDescription>
-              </CardHeader>
-
-              <CardContent className="space-y-4">
-                <div className="flex items-center gap-4 text-xs font-medium text-slate-600">
-                  <span className="inline-flex items-center gap-1.5">
-                    <Users className="h-4 w-4 text-primary-600" aria-hidden="true" />
-                    {community.memberCount.toLocaleString()} members
-                  </span>
-                  <span className="inline-flex items-center gap-1.5">
-                    <MessageCircle className="h-4 w-4 text-primary-600" aria-hidden="true" />
-                    Persistent community chat ready
-                  </span>
-                </div>
-
-                <div>
-                  <p className="mb-1.5 text-xs font-semibold uppercase tracking-wider text-slate-400">
-                    Community Founder
-                  </p>
-                  <UserProfileCard
-                    user={community.founder}
-                    contextLabel={`Community: ${community.name}`}
-                    compact
-                  />
-                </div>
-              </CardContent>
-
-              <CardFooter className="flex-wrap justify-between gap-2 border-t border-slate-100 pt-4">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => void handleOpenCommunityHub(community)}
-                >
-                  <MessageCircle className="h-4 w-4" aria-hidden="true" />
-                  Open Chat & Roster
-                </Button>
-
-                {community.viewerMembershipStatus === CommunityMembershipStatus.APPROVED ? (
-                  community.viewerRole !== CommunityMemberRole.FOUNDER ? (
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => void handleLeaveCommunity(community)}
-                    >
-                      <LogOut className="h-3.5 w-3.5" aria-hidden="true" />
-                      Leave
-                    </Button>
-                  ) : (
-                    <span className="text-xs font-medium text-primary-700">
-                      You founded this chapter
-                    </span>
-                  )
-                ) : community.viewerMembershipStatus === CommunityMembershipStatus.PENDING ? (
-                  <Button size="sm" variant="secondary" disabled>
-                    Approval Pending
-                  </Button>
+              </div>
+            ) : (
+              /* Full-Screen Community Chat Body (matching 1:1 Direct Chat conversation view) */
+              <div className="mx-auto flex min-h-0 w-full max-w-5xl flex-1 flex-col bg-white shadow-sm sm:my-4 sm:rounded-2xl sm:border sm:border-slate-200">
+                {chatAccessError ? (
+                  <div className="flex-1 p-4 sm:p-6">
+                    <div className="rounded-xl border border-yellow-200 bg-yellow-50 p-4 text-sm text-yellow-900">
+                      <p className="font-semibold">Private Community Chat Locked</p>
+                      <p className="mt-1 text-xs">{chatAccessError}</p>
+                    </div>
+                  </div>
                 ) : (
+                  <>
+                    <div
+                      ref={communityMessagesContainerRef}
+                      className="flex-1 space-y-3 overflow-y-auto p-4 sm:p-6"
+                    >
+                      {communityMessages.length === 0 ? (
+                        <p className="py-8 text-center text-xs text-slate-500">
+                          No messages yet. Start the conversation below!
+                        </p>
+                      ) : (
+                        communityMessages.map((msg) => {
+                          const isMe = Boolean(currentUser && msg.sender.id === currentUser.id);
+                          return (
+                            <div
+                              key={msg.id}
+                              className={`flex flex-col ${isMe ? 'items-end' : 'items-start'}`}
+                            >
+                              <div
+                                className={`max-w-[80%] rounded-2xl px-4 py-2.5 text-sm ${
+                                  isMe
+                                    ? 'bg-primary-600 text-white'
+                                    : 'bg-slate-100 text-slate-900'
+                                }`}
+                              >
+                                <div className="mb-1 flex items-center gap-2">
+                                  <Avatar
+                                    alt={msg.sender.displayName}
+                                    fallbackText={msg.sender.displayName}
+                                    src={msg.sender.avatarUrl}
+                                    size="sm"
+                                  />
+                                  <p
+                                    className={`text-xs font-semibold ${
+                                      isMe ? 'text-white' : 'text-slate-900'
+                                    }`}
+                                  >
+                                    {msg.sender.displayName}{' '}
+                                    <span
+                                      className={`font-normal ${
+                                        isMe ? 'text-primary-200' : 'text-slate-500'
+                                      }`}
+                                    >
+                                      @{msg.sender.username}
+                                    </span>
+                                  </p>
+                                </div>
+                                <p className={isMe ? 'text-white' : 'text-slate-800'}>
+                                  {msg.body}
+                                </p>
+                              </div>
+                            </div>
+                          );
+                        })
+                      )}
+                    </div>
+
+                    <form
+                      onSubmit={(e) => void handleSendCommunityMessage(e)}
+                      className="flex items-center gap-2.5 border-t border-slate-200 p-4 sm:px-6"
+                    >
+                      <input
+                        type="text"
+                        value={chatMessageDraft}
+                        onChange={(e) => setChatMessageDraft(e.target.value)}
+                        placeholder={`Message ${activeCommunity.name}...`}
+                        aria-label="Community chat message"
+                        className="h-11 flex-1 rounded-xl border border-slate-300 px-4 text-sm focus:border-primary-600 focus:outline-none focus:ring-2 focus:ring-primary-600/20"
+                      />
+                      <Button type="submit" size="icon" aria-label="Send">
+                        <Send className="h-4 w-4" aria-hidden="true" />
+                      </Button>
+                    </form>
+                  </>
+                )}
+              </div>
+            )}
+          </div>
+        ) : (
+          /* WhatsApp-style Communities Group List View */
+          <Card className="overflow-hidden border border-slate-200 shadow-sm">
+            {/* Top Search Bar inside the Group List */}
+            <div className="border-b border-slate-200 bg-slate-50 p-4">
+              <div className="relative w-full">
+                <Search
+                  className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400"
+                  aria-hidden="true"
+                />
+                <input
+                  type="search"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search communities to join or open..."
+                  aria-label="Search communities"
+                  className="h-11 w-full rounded-xl border border-slate-300 bg-white pl-10 pr-4 text-sm text-slate-900 placeholder:text-slate-400 focus:border-primary-600 focus:outline-none focus:ring-2 focus:ring-primary-600/20"
+                />
+              </div>
+              <div className="mt-2.5 flex items-center justify-between text-xs font-semibold uppercase tracking-wider text-slate-500">
+                <span>
+                  {normalizedSearch
+                    ? `Search Results (${filteredCommunities.length})`
+                    : `My Communities (${myCommunities.length})`}
+                </span>
+                {normalizedSearch ? (
+                  <button
+                    type="button"
+                    onClick={() => setSearchQuery('')}
+                    className="text-primary-700 hover:underline"
+                  >
+                    Clear search
+                  </button>
+                ) : null}
+              </div>
+            </div>
+
+            {/* Group List Body */}
+            {normalizedSearch ? (
+              filteredCommunities.length === 0 ? (
+                <div className="flex flex-col items-center justify-center px-6 py-12 text-center">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-slate-100 text-slate-500">
+                    <Search className="h-6 w-6" aria-hidden="true" />
+                  </div>
+                  <p className="mt-3 text-base font-semibold text-slate-900">
+                    No communities found. Click on the add button above to create communities.
+                  </p>
+                  <p className="mt-1 max-w-md text-xs text-slate-500">
+                    You can create a public or private riding community using the New Community button above.
+                  </p>
+                </div>
+              ) : (
+                <ul
+                  role="list"
+                  aria-label="Community search results"
+                  className="divide-y divide-slate-100 bg-white"
+                >
+                  {filteredCommunities.map((community) => {
+                    const isApproved =
+                      community.viewerMembershipStatus === CommunityMembershipStatus.APPROVED;
+                    const isPending =
+                      community.viewerMembershipStatus === CommunityMembershipStatus.PENDING;
+                    const lastMessage =
+                      lastMessageByCommunity[community.id] ??
+                      `${community.founder.displayName}: Welcome to ${community.name}!`;
+
+                    return (
+                      <li
+                        key={community.id}
+                        onClick={() => void handleOpenCommunityHub(community)}
+                        className="flex cursor-pointer items-center justify-between gap-3 px-4 py-3.5 transition-colors hover:bg-slate-50 sm:px-5"
+                      >
+                        <div className="flex min-w-0 flex-1 items-center gap-3.5">
+                          <Avatar
+                            alt={community.name}
+                            fallbackText={community.name}
+                            src={null}
+                            size="md"
+                          />
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-base font-bold text-slate-900">
+                              {community.name}
+                            </p>
+                            <p className="mt-0.5 truncate text-xs text-slate-500">
+                              {isPending
+                                ? 'Join request sent • Waiting for moderator approval'
+                                : lastMessage}
+                            </p>
+                          </div>
+                        </div>
+
+                        {!isApproved ? (
+                          <div
+                            className="flex shrink-0 items-center gap-2"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            {isPending ? (
+                              <Button size="sm" variant="secondary" disabled>
+                                <Clock className="h-3.5 w-3.5" aria-hidden="true" />
+                                Requested
+                              </Button>
+                            ) : (
+                              <Button
+                                size="sm"
+                                variant="default"
+                                onClick={() => void handleJoinCommunity(community)}
+                              >
+                                {community.visibility === CommunityVisibility.PUBLIC
+                                  ? 'Join Community'
+                                  : 'Request to Join'}
+                              </Button>
+                            )}
+                          </div>
+                        ) : null}
+                      </li>
+                    );
+                  })}
+                </ul>
+              )
+            ) : myCommunities.length === 0 ? (
+              <div className="flex flex-col items-center justify-center px-6 py-14 text-center">
+                <div className="flex h-14 w-14 items-center justify-center rounded-full bg-slate-100 text-slate-500">
+                  <MessageCircle className="h-7 w-7" aria-hidden="true" />
+                </div>
+                <h2 className="mt-3 text-base font-semibold text-slate-900">
+                  You are not in any groups
+                </h2>
+                <p className="mt-1 max-w-md text-xs leading-relaxed text-slate-500">
+                  Search for riding communities in the search bar above to join a public group or request to join a private group, or click the add button above to create a new community.
+                </p>
+              </div>
+            ) : (
+              <ul
+                role="list"
+                aria-label="My communities group list"
+                className="divide-y divide-slate-100 bg-white"
+              >
+                {displayedCommunities.map((community) => {
+                  const isPending =
+                    community.viewerMembershipStatus === CommunityMembershipStatus.PENDING;
+                  const lastMessage =
+                    lastMessageByCommunity[community.id] ??
+                    `${community.founder.displayName}: Welcome to ${community.name}!`;
+
+                  return (
+                    <li
+                      key={community.id}
+                      onClick={() => void handleOpenCommunityHub(community)}
+                      className="flex cursor-pointer items-center gap-3.5 px-4 py-3.5 transition-colors hover:bg-slate-50 sm:px-5"
+                    >
+                      <Avatar
+                        alt={community.name}
+                        fallbackText={community.name}
+                        src={null}
+                        size="md"
+                      />
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-base font-bold text-slate-900">
+                          {community.name}
+                        </p>
+                        <p className="mt-0.5 truncate text-xs text-slate-500">
+                          {isPending
+                            ? 'Join request sent • Waiting for moderator approval'
+                            : lastMessage}
+                        </p>
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </Card>
+        )
+      ) : (
+        <>
+          {/* Controls Bar for Blogs: Section Count Summary + Search */}
+          <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
+            <div className="inline-flex items-center gap-2 text-sm font-semibold text-slate-700">
+              <BookOpen className="h-4 w-4 text-primary-600" aria-hidden="true" />
+              <span>Showing {filteredBlogs.length} Rider Blogs</span>
+            </div>
+
+            <div className="relative w-full sm:w-80">
+              <Search
+                className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400"
+                aria-hidden="true"
+              />
+              <input
+                type="search"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search blogs or tags..."
+                aria-label="Search blogs"
+                className="h-10 w-full rounded-xl border border-slate-300 bg-white pl-9 pr-4 text-sm text-slate-900 placeholder:text-slate-400 focus:border-primary-600 focus:outline-none focus:ring-2 focus:ring-primary-600/20"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
+            {filteredBlogs.map((blog) => (
+              <Card key={blog.id} className="flex flex-col justify-between">
+                <CardHeader>
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <span className="text-xs font-medium text-primary-700">
+                      Rider Technical & Travel Log
+                    </span>
+                    <div className="flex items-center gap-2">
+                      <Badge variant="outline">{blog.readTimeMinutes} min read</Badge>
+                      <Badge variant="secondary">
+                        {blog.likesCount} likes • {blog.commentsCount} comments
+                      </Badge>
+                    </div>
+                  </div>
+                  <CardTitle className="mt-2 text-xl">{blog.title}</CardTitle>
+                  <CardDescription className="mt-1 leading-relaxed">
+                    {blog.excerpt}
+                  </CardDescription>
+                </CardHeader>
+
+                <CardContent className="space-y-4">
+                  <div className="flex flex-wrap gap-1.5">
+                    {blog.tags.map((tag) => (
+                      <Badge key={tag} variant="secondary">
+                        #{tag}
+                      </Badge>
+                    ))}
+                  </div>
+
+                  <div>
+                    <p className="mb-1.5 text-xs font-semibold uppercase tracking-wider text-slate-400">
+                      Published By
+                    </p>
+                    <UserProfileCard
+                      user={blog.author}
+                      contextLabel={`Blog: ${blog.title}`}
+                      compact
+                    />
+                  </div>
+                </CardContent>
+
+                <CardFooter className="justify-between border-t border-slate-100 pt-4">
                   <Button
                     size="sm"
-                    variant="default"
-                    onClick={() => void handleJoinCommunity(community)}
+                    variant={blog.isLikedByViewer ? 'default' : 'ghost'}
+                    onClick={() => void handleToggleBlogReaction(blog)}
                   >
-                    {community.visibility === CommunityVisibility.PUBLIC
-                      ? 'Join Community'
-                      : 'Request Access'}
+                    <Heart
+                      className={`h-4 w-4 ${blog.isLikedByViewer ? 'fill-current' : ''}`}
+                      aria-hidden="true"
+                    />
+                    Like ({blog.likesCount})
                   </Button>
-                )}
-              </CardFooter>
-            </Card>
-          ))}
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
-          {filteredBlogs.map((blog) => (
-            <Card key={blog.id} className="flex flex-col justify-between">
-              <CardHeader>
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <span className="text-xs font-medium text-primary-700">
-                    Rider Technical & Travel Log
-                  </span>
-                  <div className="flex items-center gap-2">
-                    <Badge variant="outline">{blog.readTimeMinutes} min read</Badge>
-                    <Badge variant="secondary">
-                      {blog.likesCount} likes • {blog.commentsCount} comments
-                    </Badge>
-                  </div>
-                </div>
-                <CardTitle className="mt-2 text-xl">{blog.title}</CardTitle>
-                <CardDescription className="mt-1 leading-relaxed">
-                  {blog.excerpt}
-                </CardDescription>
-              </CardHeader>
-
-              <CardContent className="space-y-4">
-                <div className="flex flex-wrap gap-1.5">
-                  {blog.tags.map((tag) => (
-                    <Badge key={tag} variant="secondary">
-                      #{tag}
-                    </Badge>
-                  ))}
-                </div>
-
-                <div>
-                  <p className="mb-1.5 text-xs font-semibold uppercase tracking-wider text-slate-400">
-                    Published By
-                  </p>
-                  <UserProfileCard
-                    user={blog.author}
-                    contextLabel={`Blog: ${blog.title}`}
-                    compact
-                  />
-                </div>
-              </CardContent>
-
-              <CardFooter className="justify-between border-t border-slate-100 pt-4">
-                <Button
-                  size="sm"
-                  variant={blog.isLikedByViewer ? 'default' : 'ghost'}
-                  onClick={() => void handleToggleBlogReaction(blog)}
-                >
-                  <Heart
-                    className={`h-4 w-4 ${blog.isLikedByViewer ? 'fill-current' : ''}`}
-                    aria-hidden="true"
-                  />
-                  Like ({blog.likesCount})
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => void handleOpenBlogReader(blog)}
-                >
-                  Read Full Article
-                </Button>
-              </CardFooter>
-            </Card>
-          ))}
-        </div>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => void handleOpenBlogReader(blog)}
+                  >
+                    Read Full Article
+                  </Button>
+                </CardFooter>
+              </Card>
+            ))}
+          </div>
+        </>
       )}
     </section>
   );

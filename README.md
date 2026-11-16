@@ -13,7 +13,7 @@ RidersClub is a production-oriented, mobile-first web application for vehicle ow
   - `apps/rides` (`:5002`) — Group ride organization, capacity enforcement, and participant rosters.
   - `apps/help` (`:5003`) — Emergency/roadside assistance requests with consent-based location sharing.
   - `apps/mechanics` (`:5004`) — Mechanic & service provider registration, search, and verification status.
-  - `apps/garage` (`:5005`) — Private vehicle profiles, service history logs, reminders, and notes.
+  - `apps/garage` (`:5005`) — Private vehicle profiles, service history logs, and notes.
   - `apps/marketplace` (`:5006`) — Secondhand car and motorcycle listings.
 - **Backend**: `apps/api` (`:4000`) — NestJS Modular Monolith + Prisma ORM + PostgreSQL 16 + Socket.IO.
 - **Shared Packages**:

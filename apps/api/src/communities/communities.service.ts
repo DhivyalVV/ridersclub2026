@@ -2,8 +2,10 @@ import {
   BadRequestException,
   ForbiddenException,
   Injectable,
+  MessageEvent,
   NotFoundException,
 } from '@nestjs/common';
+import { Observable, Subject, filter, map } from 'rxjs';
 import {
   CommunityMemberRole,
   CommunityMembershipStatus,
@@ -25,21 +27,42 @@ const UUID_REGEX =
 @Injectable()
 export class CommunitiesService {
   private seededCheckComplete = false;
+  private readonly messageStreamSubject = new Subject<{
+    communityId: string;
+    visibility: CommunityVisibility;
+    approvedMemberIds: string[];
+    message: CommunityChatMessageItem;
+  }>();
 
   constructor(
     private readonly prisma: PrismaService,
     private readonly profilesService: ProfilesService,
   ) {}
 
+  subscribeToStream(viewerId?: string): Observable<MessageEvent> {
+    return this.messageStreamSubject.asObservable().pipe(
+      filter(
+        (evt) =>
+          evt.visibility === CommunityVisibility.PUBLIC ||
+          Boolean(viewerId && evt.approvedMemberIds.includes(viewerId)),
+      ),
+      map((evt) => ({
+        data: {
+          type: 'community_message.created',
+          communityId: evt.communityId,
+          message: evt.message,
+        },
+      })),
+    );
+  }
+
   async listCommunities(params: {
     search?: string;
-    category?: string;
     viewerId?: string;
   }): Promise<CommunityItem[]> {
     await this.ensureInitialCommunitiesSeeded();
 
     const search = params.search?.trim();
-    const category = params.category?.trim();
 
     const communities = await this.prisma.community.findMany({
       where: {
@@ -48,11 +71,9 @@ export class CommunitiesService {
               OR: [
                 { name: { contains: search, mode: 'insensitive' } },
                 { description: { contains: search, mode: 'insensitive' } },
-                { category: { contains: search, mode: 'insensitive' } },
               ],
             }
           : {}),
-        ...(category ? { category: { equals: category, mode: 'insensitive' } } : {}),
       },
       include: {
         founder: { include: { profile: true } },
@@ -61,6 +82,13 @@ export class CommunitiesService {
             userId: true,
             role: true,
             status: true,
+          },
+        },
+        messages: {
+          orderBy: { createdAt: 'desc' },
+          take: 1,
+          include: {
+            sender: { include: { profile: true } },
           },
         },
       },
@@ -90,6 +118,13 @@ export class CommunitiesService {
             user: { include: { profile: true } },
           },
           orderBy: { createdAt: 'asc' },
+        },
+        messages: {
+          orderBy: { createdAt: 'desc' },
+          take: 1,
+          include: {
+            sender: { include: { profile: true } },
+          },
         },
       },
     });
@@ -142,15 +177,51 @@ export class CommunitiesService {
     founderId: string,
     dto: CreateCommunityDto,
   ): Promise<CommunityItem> {
-    const slug = await this.generateUniqueSlug(dto.name);
+    const trimmedName = dto.name.trim();
+
+    if (dto.visibility === CommunityVisibility.PUBLIC) {
+      const existingPublic = await this.prisma.community.findFirst({
+        where: {
+          visibility: CommunityVisibility.PUBLIC,
+          name: {
+            equals: trimmedName,
+            mode: 'insensitive',
+          },
+        },
+      });
+
+      if (existingPublic) {
+        throw new BadRequestException(
+          'Community already present, cannot create duplicate.',
+        );
+      }
+    } else {
+      const existingPrivateForFounder = await this.prisma.community.findFirst({
+        where: {
+          visibility: CommunityVisibility.PRIVATE,
+          founderId,
+          name: {
+            equals: trimmedName,
+            mode: 'insensitive',
+          },
+        },
+      });
+
+      if (existingPrivateForFounder) {
+        throw new BadRequestException(
+          'Community already present, cannot create duplicate.',
+        );
+      }
+    }
+
+    const slug = await this.generateUniqueSlug(trimmedName);
 
     const created = await this.prisma.community.create({
       data: {
         founderId,
         slug,
-        name: dto.name.trim(),
+        name: trimmedName,
         description: dto.description.trim(),
-        category: dto.category.trim(),
         visibility: dto.visibility,
         members: {
           create: {
@@ -167,6 +238,13 @@ export class CommunitiesService {
             userId: true,
             role: true,
             status: true,
+          },
+        },
+        messages: {
+          orderBy: { createdAt: 'desc' },
+          take: 1,
+          include: {
+            sender: { include: { profile: true } },
           },
         },
       },
@@ -414,13 +492,33 @@ export class CommunitiesService {
       },
     });
 
-    return {
+    const messageDto: CommunityChatMessageItem = {
       id: created.id,
       communityId: created.communityId,
       body: created.body,
       createdAt: created.createdAt.toISOString(),
       sender: this.profilesService.mapUserWithProfileToPublicSummary(created.sender),
     };
+
+    try {
+      const approvedMembers = await this.prisma.communityMember.findMany({
+        where: {
+          communityId,
+          status: CommunityMembershipStatus.APPROVED,
+        },
+        select: { userId: true },
+      });
+      this.messageStreamSubject.next({
+        communityId,
+        visibility: community.visibility as CommunityVisibility,
+        approvedMemberIds: approvedMembers.map((m) => m.userId),
+        message: messageDto,
+      });
+    } catch {
+      // Ignore realtime broadcast errors in unit tests
+    }
+
+    return messageDto;
   }
 
   private async generateUniqueSlug(name: string): Promise<string> {
@@ -445,7 +543,6 @@ export class CommunitiesService {
       slug: string;
       name: string;
       description: string;
-      category: string;
       visibility: string;
       createdAt: Date;
       founder: {
@@ -468,6 +565,27 @@ export class CommunitiesService {
         role: string;
         status: string;
       }>;
+      messages?: Array<{
+        id: string;
+        communityId: string;
+        body: string;
+        createdAt: Date;
+        sender: {
+          id: string;
+          role: string;
+          phoneNumber: string | null;
+          allowDirectMessages: string;
+          profile: {
+            userId: string;
+            displayName: string;
+            username: string;
+            avatarUrl: string | null;
+            bio: string | null;
+            city: string | null;
+            showPhone: boolean;
+          } | null;
+        };
+      }>;
     },
     viewerId?: string,
   ): CommunityItem {
@@ -479,12 +597,20 @@ export class CommunitiesService {
       ? community.members.find((m) => m.userId === viewerId)
       : undefined;
 
+    const canViewMessages =
+      community.visibility === CommunityVisibility.PUBLIC ||
+      viewerRecord?.status === CommunityMembershipStatus.APPROVED;
+
+    const latestMsg =
+      canViewMessages && community.messages && community.messages.length > 0
+        ? community.messages[0]
+        : undefined;
+
     return {
       id: community.id,
       slug: community.slug,
       name: community.name,
       description: community.description,
-      category: community.category,
       visibility: community.visibility as CommunityVisibility,
       memberCount: approvedCount,
       founder: this.profilesService.mapUserWithProfileToPublicSummary(community.founder),
@@ -492,6 +618,15 @@ export class CommunitiesService {
         ? (viewerRecord.status as CommunityMembershipStatus)
         : null,
       viewerRole: viewerRecord ? (viewerRecord.role as CommunityMemberRole) : null,
+      lastMessage: latestMsg
+        ? {
+            id: latestMsg.id,
+            communityId: latestMsg.communityId,
+            body: latestMsg.body,
+            createdAt: latestMsg.createdAt.toISOString(),
+            sender: this.profilesService.mapUserWithProfileToPublicSummary(latestMsg.sender),
+          }
+        : null,
       createdAt: community.createdAt.toISOString(),
     };
   }
@@ -569,7 +704,6 @@ export class CommunitiesService {
           name: 'Western Ghats ADV Tourers',
           description:
             'Weekend trail rides, monsoon preparedness checklists, and technical terrain mentorship across Karnataka, Goa, and Maharashtra.',
-          category: 'Adventure & Touring',
           visibility: CommunityVisibility.PUBLIC,
           members: {
             create: [
@@ -607,7 +741,6 @@ export class CommunitiesService {
           name: 'Classic & Modern Retro Mechanics Guild',
           description:
             'Carburetor tuning, electrical wiring schematics, and restoration logs for twins, singles, and modern classic cars.',
-          category: 'Maintenance & Builds',
           visibility: CommunityVisibility.PUBLIC,
           members: {
             create: [
@@ -636,7 +769,6 @@ export class CommunitiesService {
           name: 'Deccan GT Track & Canyon Club',
           description:
             'Invite-only group for verified sportbike and performance sedan owners organizing track sessions and telemetry reviews.',
-          category: 'Track & Performance',
           visibility: CommunityVisibility.PRIVATE,
           members: {
             create: [

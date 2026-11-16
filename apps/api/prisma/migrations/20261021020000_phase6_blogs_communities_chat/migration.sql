@@ -52,7 +52,6 @@ CREATE TABLE "communities" (
     "slug" TEXT NOT NULL,
     "name" TEXT NOT NULL,
     "description" TEXT NOT NULL,
-    "category" TEXT NOT NULL,
     "visibility" "CommunityVisibility" NOT NULL DEFAULT 'PUBLIC',
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
@@ -104,9 +103,6 @@ CREATE UNIQUE INDEX "communities_slug_key" ON "communities"("slug");
 
 -- CreateIndex
 CREATE INDEX "communities_visibility_idx" ON "communities"("visibility");
-
--- CreateIndex
-CREATE INDEX "communities_category_idx" ON "communities"("category");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "community_members_communityId_userId_key" ON "community_members"("communityId", "userId");

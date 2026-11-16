@@ -1,1 +1,1 @@
-{"version":3,"file":"MarketplaceRemoteApp.d.ts","sourceRoot":"","sources":["../../../../src/MarketplaceRemoteApp.tsx"],"names":[],"mappings":"AAAA,OAAO,KAAK,KAAK,MAAM,OAAO,CAAC;AA6H/B,wBAAgB,oBAAoB,IAAI,KAAK,CAAC,GAAG,CAAC,OAAO,CAuuBxD;AAED,eAAe,oBAAoB,CAAC"}
+{"version":3,"file":"MarketplaceRemoteApp.d.ts","sourceRoot":"","sources":["../../../../src/MarketplaceRemoteApp.tsx"],"names":[],"mappings":"AAAA,OAAO,KAAK,KAAK,MAAM,OAAO,CAAC;AA4H/B,wBAAgB,oBAAoB,IAAI,KAAK,CAAC,GAAG,CAAC,OAAO,CA+uBxD;AAED,eAAe,oBAAoB,CAAC"}

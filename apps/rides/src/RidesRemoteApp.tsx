@@ -6,6 +6,7 @@ import {
   Compass,
   ExternalLink,
   Flag,
+  Info,
   LogOut,
   MapPin,
   Navigation,
@@ -146,6 +147,7 @@ export function RidesRemoteApp(): React.JSX.Element {
   const [searchQuery, setSearchQuery] = React.useState('');
   const [rides, setRides] = React.useState<RideItem[]>(INITIAL_RIDES);
   const [statusBanner, setStatusBanner] = React.useState<string | null>(null);
+  const [showHeaderInfo, setShowHeaderInfo] = React.useState(false);
 
   // Host a Ride Modal / Form State
   const [showHostForm, setShowHostForm] = React.useState(false);
@@ -422,20 +424,47 @@ export function RidesRemoteApp(): React.JSX.Element {
 
   return (
     <section aria-label="Group Rides Federated Module" className="space-y-6">
-      <div className="rounded-2xl bg-gradient-to-r from-primary-900 via-primary-800 to-primary-700 p-5 text-white shadow-md sm:p-7">
-        <div className="flex flex-col justify-between gap-4 lg:flex-row lg:items-end">
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
-              Group Ride Organization
-            </h1>
-            <p className="mt-1.5 max-w-2xl text-sm text-primary-100 sm:text-base">
-              Host, discover, and join capacity-managed group rides. Contact ride organizers
-              directly via 1:1 private chat for route briefings and gear requirements.
-            </p>
-          </div>
+      <div className="relative rounded-2xl bg-gradient-to-r from-primary-900 via-primary-800 to-primary-700 px-5 py-4 pr-12 text-white shadow-md sm:px-6 sm:pr-14">
+        <div className="absolute right-2.5 top-2.5">
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            aria-label="Toggle page description"
+            aria-expanded={showHeaderInfo}
+            title="Page information"
+            onClick={() => setShowHeaderInfo((prev) => !prev)}
+            className="h-7 w-7 text-primary-100 hover:bg-white/15 hover:text-white"
+          >
+            <Info className="h-4 w-4" aria-hidden="true" />
+          </Button>
+          {showHeaderInfo && (
+            <>
+              <div
+                className="fixed inset-0 z-40"
+                aria-hidden="true"
+                onClick={() => setShowHeaderInfo(false)}
+              />
+              <div
+                role="dialog"
+                aria-label="Page information"
+                className="absolute right-0 top-full z-50 mt-1.5 w-72 rounded-xl border border-yellow-200 bg-yellow-50 p-3.5 text-xs leading-relaxed text-yellow-950 shadow-lg sm:w-80"
+              >
+                <p>
+                  Host, discover, and join capacity-managed group rides. Contact ride organizers
+                  directly via 1:1 private chat for route briefings and gear requirements.
+                </p>
+              </div>
+            </>
+          )}
+        </div>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h1 className="text-xl font-bold tracking-tight sm:text-2xl">
+            Group Ride Organization
+          </h1>
           <Button
             variant="secondary"
-            className="bg-white text-primary-900 hover:bg-primary-50"
+            className="bg-yellow-100 text-yellow-950 hover:bg-yellow-200"
             onClick={() => setShowHostForm(true)}
           >
             <Plus className="h-4 w-4" aria-hidden="true" />

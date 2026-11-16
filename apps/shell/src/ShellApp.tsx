@@ -9,13 +9,14 @@ import {
 } from 'react-router-dom';
 import {
   AlertTriangle,
-  ArrowLeft,
   Ban,
   Bell,
   BookOpen,
   Car,
+  ChevronLeft,
   Compass,
   Gauge,
+  Info,
   Menu,
   MessageSquare,
   Send,
@@ -180,6 +181,7 @@ export function ShellApp({
   const [inspectedUser, setInspectedUser] = React.useState<PublicUserSummary | null>(null);
   const [blockedUserIds, setBlockedUserIds] = React.useState<Set<string>>(new Set());
   const [draftMessage, setDraftMessage] = React.useState('');
+  const [showWelcomeInfo, setShowWelcomeInfo] = React.useState(false);
 
   const activeSelfId = authenticatedUser?.id ?? FALLBACK_GUEST_USER.id;
   const activeSelfDisplayName =
@@ -285,6 +287,26 @@ export function ShellApp({
     };
   }, [accessToken, apiBaseUrl]);
 
+  const isChatDrawerOpenRef = React.useRef(isChatDrawerOpen);
+  React.useEffect(() => {
+    isChatDrawerOpenRef.current = isChatDrawerOpen;
+  }, [isChatDrawerOpen]);
+
+  const chatViewModeRef = React.useRef(chatViewMode);
+  React.useEffect(() => {
+    chatViewModeRef.current = chatViewMode;
+  }, [chatViewMode]);
+
+  const activePairKeyRef = React.useRef(activePairKey);
+  React.useEffect(() => {
+    activePairKeyRef.current = activePairKey;
+  }, [activePairKey]);
+
+  const conversationsRef = React.useRef(conversations);
+  React.useEffect(() => {
+    conversationsRef.current = conversations;
+  }, [conversations]);
+
   // Connect to real-time 1:1 messaging SSE stream when authenticated
   React.useEffect(() => {
     if (!accessToken || accessToken.startsWith('local-session-') || typeof window.EventSource === 'undefined') {
@@ -297,45 +319,92 @@ export function ShellApp({
         `${apiBaseUrl}/conversations/stream?token=${encodeURIComponent(accessToken)}`,
       );
 
-      source.onmessage = (evt) => {
+      const handleSseMessage = (evt: MessageEvent) => {
         try {
-          const payload = JSON.parse(evt.data) as DirectMessagingRealtimeEvent;
+          const payload = JSON.parse(evt.data as string) as DirectMessagingRealtimeEvent;
           if (payload.type === 'direct_message.created' && payload.message) {
             const incomingMsg = payload.message;
-            setConversations((prev) =>
-              prev.map((thread) => {
-                if (thread.pairKey !== payload.participantPairKey) {
-                  return thread;
-                }
-                const alreadyExists = thread.messages.some((m) => m.id === incomingMsg.id);
-                if (alreadyExists) {
-                  return thread;
-                }
-                const isFromPeer = incomingMsg.senderId !== activeSelfId;
-                return {
-                  ...thread,
-                  conversationId: payload.conversationId,
-                  unreadCount:
-                    isFromPeer && !isChatDrawerOpen
-                      ? thread.unreadCount + 1
-                      : thread.unreadCount,
-                  messages: [
-                    ...thread.messages,
-                    {
-                      id: incomingMsg.id,
-                      senderId: incomingMsg.senderId,
-                      body: incomingMsg.body,
-                      sentAtLabel: formatSentTimeLabel(incomingMsg.createdAt),
-                    },
-                  ],
-                };
-              }),
+            const foundExistingThread = conversationsRef.current.some(
+              (t) => t.pairKey === payload.participantPairKey,
             );
+
+            if (foundExistingThread) {
+              const isFromPeer = incomingMsg.senderId !== activeSelfId;
+              const isActivelyViewingThread =
+                isChatDrawerOpenRef.current &&
+                chatViewModeRef.current === 'conversation' &&
+                activePairKeyRef.current === payload.participantPairKey;
+
+              setConversations((prev) =>
+                prev.map((thread) => {
+                  if (thread.pairKey !== payload.participantPairKey) {
+                    return thread;
+                  }
+                  const alreadyExists = thread.messages.some((m) => m.id === incomingMsg.id);
+                  if (alreadyExists) {
+                    return thread;
+                  }
+
+                  const formattedIncoming = {
+                    id: incomingMsg.id,
+                    senderId: incomingMsg.senderId,
+                    body: incomingMsg.body,
+                    sentAtLabel: formatSentTimeLabel(incomingMsg.createdAt),
+                  };
+
+                  const optimisticIdx = !isFromPeer
+                    ? thread.messages.findIndex(
+                        (m) => m.id.startsWith('msg-') && m.body === incomingMsg.body,
+                      )
+                    : -1;
+
+                  const nextMessages =
+                    optimisticIdx !== -1
+                      ? thread.messages.map((m, idx) =>
+                          idx === optimisticIdx ? formattedIncoming : m,
+                        )
+                      : [...thread.messages, formattedIncoming];
+
+                  return {
+                    ...thread,
+                    conversationId: payload.conversationId,
+                    unreadCount:
+                      isFromPeer && !isActivelyViewingThread
+                        ? thread.unreadCount + 1
+                        : thread.unreadCount,
+                    messages: nextMessages,
+                  };
+                }),
+              );
+
+              if (isFromPeer && isActivelyViewingThread && payload.conversationId) {
+                void fetch(`${apiBaseUrl}/conversations/${payload.conversationId}/read`, {
+                  method: 'POST',
+                  headers: { Authorization: `Bearer ${accessToken}` },
+                }).catch(() => {});
+              }
+            } else {
+              void fetch(`${apiBaseUrl}/conversations`, {
+                headers: { Authorization: `Bearer ${accessToken}` },
+              })
+                .then((res) => (res.ok ? res.json() : []))
+                .then((items: DirectConversationItem[]) => {
+                  if (Array.isArray(items) && items.length > 0) {
+                    const mapped = items.map(mapApiConversationToThread);
+                    setConversations(mapped);
+                    setActivePairKey((prev) => prev || mapped[0]?.pairKey || '');
+                  }
+                })
+                .catch(() => {});
+            }
           }
         } catch {
           // ignore malformed SSE event
         }
       };
+
+      source.onmessage = handleSseMessage;
+      source.addEventListener('direct_message.created', handleSseMessage as EventListener);
     } catch {
       // ignore if EventSource fails to connect
     }
@@ -343,7 +412,7 @@ export function ShellApp({
     return () => {
       source?.close();
     };
-  }, [accessToken, apiBaseUrl, activeSelfId, isChatDrawerOpen]);
+  }, [accessToken, apiBaseUrl, activeSelfId]);
 
   // Listen for cross-micro-frontend 1:1 Chat & Profile inspection events
   React.useEffect(() => {
@@ -443,6 +512,21 @@ export function ShellApp({
 
   const totalUnreadMessages = conversations.reduce((sum, c) => sum + c.unreadCount, 0);
   const activeConversation = conversations.find((c) => c.pairKey === activePairKey) ?? null;
+  const directMessagesContainerRef = React.useRef<HTMLDivElement | null>(null);
+
+  React.useEffect(() => {
+    if (isChatDrawerOpen && chatViewMode === 'conversation') {
+      const container = directMessagesContainerRef.current;
+      if (container) {
+        container.scrollTop = container.scrollHeight;
+      }
+    }
+  }, [
+    isChatDrawerOpen,
+    chatViewMode,
+    activeConversation?.pairKey,
+    activeConversation?.messages.length,
+  ]);
 
   const isAdminOrModerator =
     authenticatedUser?.role === UserRole.ADMIN ||
@@ -569,39 +653,65 @@ export function ShellApp({
     );
     setDraftMessage('');
 
-    if (accessToken && targetConversationId) {
-      fetch(`${apiBaseUrl}/conversations/${targetConversationId}/messages`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${accessToken}`,
-        },
-        body: JSON.stringify({
-          body: trimmed,
-          contextLabel: targetContextLabel,
-        }),
-      })
-        .then((res) => (res.ok ? res.json() : null))
+    if (accessToken && !accessToken.startsWith('local-session-')) {
+      const targetPeerId = activeConversation.peer.id;
+      const ensureConvIdPromise = targetConversationId
+        ? Promise.resolve(targetConversationId)
+        : fetch(`${apiBaseUrl}/conversations/open`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${accessToken}`,
+            },
+            body: JSON.stringify({
+              recipientUserId: targetPeerId,
+              contextLabel: targetContextLabel,
+            }),
+          })
+            .then((res) => (res.ok ? res.json() : null))
+            .then((conv: DirectConversationItem | null) => conv?.id ?? null);
+
+      void ensureConvIdPromise
+        .then((convId) => {
+          if (!convId) return null;
+          return fetch(`${apiBaseUrl}/conversations/${convId}/messages`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${accessToken}`,
+            },
+            body: JSON.stringify({
+              body: trimmed,
+              contextLabel: targetContextLabel,
+            }),
+          }).then((res) => (res.ok ? res.json() : null));
+        })
         .then((saved: DirectMessageItem | null) => {
           if (!saved) return;
           setConversations((prev) =>
-            prev.map((c) =>
-              c.pairKey === targetPairKey
-                ? {
-                    ...c,
-                    messages: c.messages.map((m) =>
-                      m.id === tempId
-                        ? {
-                            id: saved.id,
-                            senderId: saved.senderId,
-                            body: saved.body,
-                            sentAtLabel: formatSentTimeLabel(saved.createdAt),
-                          }
-                        : m,
-                    ),
-                  }
-                : c,
-            ),
+            prev.map((c) => {
+              if (c.pairKey !== targetPairKey) {
+                return c;
+              }
+              const alreadyAddedBySse = c.messages.some((m) => m.id === saved.id);
+              const nextMessages = alreadyAddedBySse
+                ? c.messages.filter((m) => m.id !== tempId)
+                : c.messages.map((m) =>
+                    m.id === tempId
+                      ? {
+                          id: saved.id,
+                          senderId: saved.senderId,
+                          body: saved.body,
+                          sentAtLabel: formatSentTimeLabel(saved.createdAt),
+                        }
+                      : m,
+                  );
+              return {
+                ...c,
+                conversationId: saved.conversationId,
+                messages: nextMessages,
+              };
+            }),
           );
         })
         .catch(() => {
@@ -706,7 +816,7 @@ export function ShellApp({
                 <Link
                   to="/profile"
                   aria-label="My Profile and Account Settings"
-                  className="flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 py-1 pl-1 pr-3 text-xs font-semibold text-slate-800 transition-colors hover:bg-primary-50 hover:text-primary-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600"
+                  className="flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 p-1 text-xs font-semibold text-slate-800 transition-colors hover:bg-primary-50 hover:text-primary-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600 md:pr-3"
                 >
                   <Avatar
                     src={authenticatedUser.profile.avatarUrl}
@@ -752,7 +862,7 @@ export function ShellApp({
                         isActive
                           ? 'bg-primary-600 text-white shadow-sm'
                           : item.highlight
-                            ? 'text-amber-800 hover:bg-amber-50'
+                            ? 'text-yellow-800 hover:bg-yellow-50'
                             : 'text-slate-700 hover:bg-slate-100'
                       }`
                     }
@@ -819,17 +929,48 @@ export function ShellApp({
         <main id="main-content" key={accessToken ?? "guest"} tabIndex={-1} className="min-w-0 flex-1 focus:outline-none">
           {!authenticatedUser ? (
             <div className="space-y-6">
-              <div className="rounded-2xl bg-gradient-to-r from-primary-950 via-primary-900 to-primary-700 p-6 text-white shadow-md">
-                <Badge className="border-white/25 bg-white/15 text-white">
-                  Authentication Required
-                </Badge>
-                <h1 className="mt-2 text-2xl font-bold tracking-tight sm:text-3xl">
-                  Welcome to RidersClub
-                </h1>
-                <p className="mt-1 max-w-2xl text-sm text-primary-100">
-                  Sign in with Phone OTP or Google below to unlock Communities, Rider Blogs, Group
-                  Rides, Roadside Help, My Garage, Mechanics, and Marketplace.
-                </p>
+              <div className="relative rounded-2xl bg-gradient-to-r from-primary-950 via-primary-900 to-primary-700 px-5 py-4 pr-12 text-white shadow-md sm:px-6 sm:pr-14">
+                <div className="absolute right-2.5 top-2.5">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    aria-label="Toggle page description"
+                    aria-expanded={showWelcomeInfo}
+                    title="Page information"
+                    onClick={() => setShowWelcomeInfo((prev) => !prev)}
+                    className="h-7 w-7 text-primary-100 hover:bg-white/15 hover:text-white"
+                  >
+                    <Info className="h-4 w-4" aria-hidden="true" />
+                  </Button>
+                  {showWelcomeInfo && (
+                    <>
+                      <div
+                        className="fixed inset-0 z-40"
+                        aria-hidden="true"
+                        onClick={() => setShowWelcomeInfo(false)}
+                      />
+                      <div
+                        role="dialog"
+                        aria-label="Page information"
+                        className="absolute right-0 top-full z-50 mt-1.5 w-72 rounded-xl border border-yellow-200 bg-yellow-50 p-3.5 text-xs leading-relaxed text-yellow-950 shadow-lg sm:w-80"
+                      >
+                        <p>
+                          Sign in with Phone OTP or Google below to unlock Communities, Rider Blogs, Group
+                          Rides, Roadside Help, My Garage, Mechanics, and Marketplace.
+                        </p>
+                      </div>
+                    </>
+                  )}
+                </div>
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <h1 className="text-xl font-bold tracking-tight sm:text-2xl">
+                    Welcome to RidersClub
+                  </h1>
+                  <Badge className="border-white/25 bg-white/15 text-white">
+                    Authentication Required
+                  </Badge>
+                </div>
               </div>
               <AuthAndProfileView
                 apiBaseUrl={apiBaseUrl}
@@ -985,8 +1126,8 @@ export function ShellApp({
             className={({ isActive }) =>
               `flex flex-col items-center gap-0.5 rounded-xl px-3 py-1 text-[11px] font-semibold ${
                 isActive
-                  ? 'bg-amber-600 text-white'
-                  : 'bg-amber-50 text-amber-800 border border-amber-200'
+                  ? 'bg-yellow-600 text-white'
+                  : 'bg-yellow-50 text-yellow-800 border border-yellow-200'
               }`
             }
           >
@@ -1038,7 +1179,6 @@ export function ShellApp({
                 { to: '/blogs', label: 'Rider Blogs', icon: BookOpen },
                 { to: '/marketplace', label: 'Marketplace', icon: ShoppingBag },
                 { to: '/mechanics', label: 'Mechanics', icon: Wrench },
-                { to: '/profile', label: 'Profile & Auth', icon: User },
                 ...(isAdminOrModerator
                   ? [{ to: '/admin', label: 'Admin & Safety', icon: ShieldAlert }]
                   : []),
@@ -1069,25 +1209,24 @@ export function ShellApp({
           className="fixed inset-0 z-50 flex flex-col bg-slate-50"
         >
           {/* Top Header Bar */}
-          <div className="border-b border-slate-200 bg-primary-900 px-4 py-3.5 text-white shadow-sm sm:px-6">
-            <div className="mx-auto flex max-w-5xl items-center justify-between gap-3">
+          <div className="border-b border-slate-200 bg-primary-900 py-3 pl-2 pr-4 text-white shadow-sm sm:px-6 sm:py-3.5">
+            <div className="mx-auto flex max-w-5xl items-center justify-between gap-2 sm:gap-3">
               {chatViewMode === 'conversation' && activeConversation ? (
-                <div className="flex min-w-0 items-center gap-3">
+                <div className="flex min-w-0 items-center gap-1 sm:gap-2.5">
                   <Button
                     variant="ghost"
-                    size="sm"
+                    size="icon"
                     onClick={() => setChatViewMode('list')}
                     aria-label="Back to all chats"
-                    className="shrink-0 gap-1.5 px-2.5 text-white hover:bg-primary-800 hover:text-white"
+                    className="h-8 w-7 shrink-0 px-0 text-white hover:bg-primary-800 hover:text-white sm:h-9 sm:w-9"
                   >
-                    <ArrowLeft className="h-4 w-4" aria-hidden="true" />
-                    <span>All Chats</span>
+                    <ChevronLeft className="h-5 w-5" aria-hidden="true" />
                   </Button>
                   <button
                     type="button"
                     aria-label={activeConversation.peer.displayName}
                     onClick={() => setInspectedUser(activeConversation.peer)}
-                    className="flex min-w-0 items-center gap-2.5 rounded-lg px-2 py-1 text-left transition-colors hover:bg-primary-800"
+                    className="flex min-w-0 items-center gap-2 rounded-lg px-1 py-1 text-left transition-colors hover:bg-primary-800 sm:gap-2.5 sm:px-2"
                   >
                     <Avatar
                       src={activeConversation.peer.avatarUrl}
@@ -1112,7 +1251,7 @@ export function ShellApp({
                 <div className="flex items-center gap-2.5">
                   <MessageSquare className="h-5 w-5 text-primary-200" aria-hidden="true" />
                   <h2 className="text-base font-bold sm:text-lg">
-                    1:1 Private Messaging ({conversations.length})
+                    Private Messaging ({conversations.length})
                   </h2>
                 </div>
               )}
@@ -1215,7 +1354,10 @@ export function ShellApp({
             </div>
           ) : (
             <div className="mx-auto flex min-h-0 w-full max-w-5xl flex-1 flex-col bg-white shadow-sm sm:my-4 sm:rounded-2xl sm:border sm:border-slate-200">
-              <div className="flex-1 space-y-3 overflow-y-auto p-4 sm:p-6">
+              <div
+                ref={directMessagesContainerRef}
+                className="flex-1 space-y-3 overflow-y-auto p-4 sm:p-6"
+              >
                 {activeConversation.messages.length === 0 ? (
                   <EmptyState
                     title={`Start chatting with ${activeConversation.peer.displayName}`}

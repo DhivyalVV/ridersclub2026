@@ -158,5 +158,72 @@ describe('CommunitiesService', () => {
     expect(approved.status).toBe(CommunityMembershipStatus.APPROVED);
     expect(approved.userId).toBe('applicant-user');
   });
+
+  it('prevents duplicate public communities globally and duplicate private communities for the same user while allowing 1 public and 1 private with the same name', async () => {
+    const mockPrisma = {
+      community: {
+        findFirst: jest
+          .fn()
+          // 1. First call: trying to create duplicate PUBLIC community -> exists
+          .mockResolvedValueOnce({ id: 'existing-public' })
+          // 2. Second call: same user creating PRIVATE community with same name -> does not exist for user
+          .mockResolvedValueOnce(null)
+          // 3. Third call: same user trying to create duplicate PRIVATE community -> exists for user
+          .mockResolvedValueOnce({ id: 'existing-private' }),
+        findUnique: jest.fn().mockResolvedValue(null),
+        create: jest.fn().mockResolvedValue({
+          id: 'comm-created-private',
+          slug: 'western-ghats-adv-tourers',
+          name: 'Western Ghats ADV Tourers',
+          description: 'Private chapter',
+          visibility: CommunityVisibility.PRIVATE,
+          createdAt: new Date(),
+          founder: {
+            id: 'user-1',
+            role: UserRole.USER,
+            phoneNumber: null,
+            allowDirectMessages: 'EVERYONE',
+            profile: null,
+          },
+          members: [
+            {
+              userId: 'user-1',
+              role: CommunityMemberRole.FOUNDER,
+              status: CommunityMembershipStatus.APPROVED,
+            },
+          ],
+          messages: [],
+        }),
+      },
+    };
+
+    const service = new CommunitiesService(
+      mockPrisma as never,
+      mockProfilesService as never,
+    );
+
+    await expect(
+      service.createCommunity('user-1', {
+        name: 'Western Ghats ADV Tourers',
+        description: 'Duplicate public group',
+        visibility: CommunityVisibility.PUBLIC,
+      }),
+    ).rejects.toThrow('Community already present, cannot create duplicate.');
+
+    const createdPrivate = await service.createCommunity('user-1', {
+      name: 'Western Ghats ADV Tourers',
+      description: 'Private chapter with same name',
+      visibility: CommunityVisibility.PRIVATE,
+    });
+    expect(createdPrivate.visibility).toBe(CommunityVisibility.PRIVATE);
+
+    await expect(
+      service.createCommunity('user-1', {
+        name: 'Western Ghats ADV Tourers',
+        description: 'Second private chapter with same name by same user',
+        visibility: CommunityVisibility.PRIVATE,
+      }),
+    ).rejects.toThrow('Community already present, cannot create duplicate.');
+  });
 });
 

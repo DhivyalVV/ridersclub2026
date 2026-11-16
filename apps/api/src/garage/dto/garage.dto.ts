@@ -49,21 +49,6 @@ export class CreateVehicleDto {
   @Min(0)
   @Max(2000000)
   currentOdometerKm!: number;
-
-  @ApiPropertyOptional({
-    example: 'Chain slack & valve clearance check at 12,000 km',
-  })
-  @IsOptional()
-  @IsString()
-  @MaxLength(240)
-  nextReminderLabel?: string;
-
-  @ApiPropertyOptional({ example: 12000 })
-  @IsOptional()
-  @IsInt()
-  @Min(0)
-  @Max(2000000)
-  nextServiceOdometerKm?: number;
 }
 
 export class UpdateVehicleDto {
@@ -100,21 +85,6 @@ export class UpdateVehicleDto {
   @Min(0)
   @Max(2000000)
   currentOdometerKm?: number;
-
-  @ApiPropertyOptional({
-    example: 'Chain slack & valve clearance check at 12,000 km',
-  })
-  @IsOptional()
-  @IsString()
-  @MaxLength(240)
-  nextReminderLabel?: string;
-
-  @ApiPropertyOptional({ example: 12000 })
-  @IsOptional()
-  @IsInt()
-  @Min(0)
-  @Max(2000000)
-  nextServiceOdometerKm?: number;
 }
 
 export class CreateServiceRecordDto {

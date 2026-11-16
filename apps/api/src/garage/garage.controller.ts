@@ -75,7 +75,7 @@ export class GarageController {
   @Patch('vehicles/:id')
   @ApiOperation({
     summary:
-      'Update private vehicle odometer, reminder, or metadata (owner-only)',
+      'Update private vehicle odometer or metadata (owner-only)',
   })
   async updateVehicle(
     @Param('id') id: string,

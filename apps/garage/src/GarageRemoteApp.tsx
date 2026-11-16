@@ -1,10 +1,9 @@
 import * as React from 'react';
 import {
-  BellRing,
   Calendar,
   FileText,
   Gauge,
-  Lock,
+  Info,
   Plus,
   Trash2,
   Wrench,
@@ -33,8 +32,6 @@ const INITIAL_VEHICLES: GarageVehicleItem[] = [
     year: 2025,
     registrationLabel: 'KA-01-RC-4500',
     currentOdometerKm: 11420,
-    nextReminderLabel: 'Chain slack & valve clearance check at 12,000 km',
-    nextServiceOdometerKm: 12000,
     createdAt: '2026-01-10T00:00:00.000Z',
     notes: [
       {
@@ -84,8 +81,6 @@ const INITIAL_VEHICLES: GarageVehicleItem[] = [
     year: 2023,
     registrationLabel: 'KA-03-TS-2023',
     currentOdometerKm: 28900,
-    nextReminderLabel: 'Annual haldex/DSG fluid inspection at 30,000 km',
-    nextServiceOdometerKm: 30000,
     createdAt: '2026-02-15T00:00:00.000Z',
     notes: [
       {
@@ -144,6 +139,7 @@ export function GarageRemoteApp(): React.JSX.Element {
   const [showLogService, setShowLogService] = React.useState(false);
   const [statusNotice, setStatusNotice] = React.useState<string | null>(null);
   const [errorNotice, setErrorNotice] = React.useState<string | null>(null);
+  const [showHeaderInfo, setShowHeaderInfo] = React.useState(false);
 
   // Add Vehicle form state
   const [newType, setNewType] = React.useState<VehicleType>(
@@ -154,9 +150,6 @@ export function GarageRemoteApp(): React.JSX.Element {
   const [newYear, setNewYear] = React.useState('2025');
   const [newRegLabel, setNewRegLabel] = React.useState('');
   const [newOdometerKm, setNewOdometerKm] = React.useState('1200');
-  const [newReminderLabel, setNewReminderLabel] = React.useState(
-    'First periodic service & oil change at 5,000 km',
-  );
 
   // Log Service form state
   const [srvDate, setSrvDate] = React.useState('2026-10-22');
@@ -232,7 +225,6 @@ export function GarageRemoteApp(): React.JSX.Element {
             year: parsedYear,
             registrationLabel: newRegLabel.trim() || undefined,
             currentOdometerKm: parsedOdo,
-            nextReminderLabel: newReminderLabel.trim() || undefined,
           }),
         });
         if (res.ok) {
@@ -261,9 +253,6 @@ export function GarageRemoteApp(): React.JSX.Element {
       year: parsedYear,
       registrationLabel: newRegLabel.trim() || null,
       currentOdometerKm: parsedOdo,
-      nextReminderLabel:
-        newReminderLabel.trim() || 'Routine inspection in 5,000 km',
-      nextServiceOdometerKm: parsedOdo + 5000,
       createdAt: new Date().toISOString(),
       notes: [],
       serviceHistory: [],
@@ -445,31 +434,48 @@ export function GarageRemoteApp(): React.JSX.Element {
       aria-label="Private Garage and Service History Federated Module"
       className="space-y-6"
     >
-      <div className="rounded-2xl bg-gradient-to-r from-primary-900 via-primary-800 to-primary-700 p-5 text-white shadow-md sm:p-7">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <Badge
-            variant="verified"
-            className="border-none bg-emerald-100 text-emerald-950"
+      <div className="relative rounded-2xl bg-gradient-to-r from-primary-900 via-primary-800 to-primary-700 px-5 py-4 pr-12 text-white shadow-md sm:px-6 sm:pr-14">
+        <div className="absolute right-2.5 top-2.5">
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            aria-label="Toggle page description"
+            aria-expanded={showHeaderInfo}
+            title="Page information"
+            onClick={() => setShowHeaderInfo((prev) => !prev)}
+            className="h-7 w-7 text-primary-100 hover:bg-white/15 hover:text-white"
           >
-            <Lock className="h-3 w-3" aria-hidden="true" />
-            Private by Default (Owner-Only Records)
-          </Badge>
+            <Info className="h-4 w-4" aria-hidden="true" />
+          </Button>
+          {showHeaderInfo && (
+            <>
+              <div
+                className="fixed inset-0 z-40"
+                aria-hidden="true"
+                onClick={() => setShowHeaderInfo(false)}
+              />
+              <div
+                role="dialog"
+                aria-label="Page information"
+                className="absolute right-0 top-full z-50 mt-1.5 w-72 rounded-xl border border-yellow-200 bg-yellow-50 p-3.5 text-xs leading-relaxed text-yellow-950 shadow-lg sm:w-80"
+              >
+                <p>
+                  Maintain private vehicle records, odometer-validated service
+                  history, costs, and notes for your motorcycles and
+                  cars.
+                </p>
+              </div>
+            </>
+          )}
         </div>
-
-        <div className="mt-4 flex flex-col justify-between gap-4 lg:flex-row lg:items-end">
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
-              My Garage & Service Logbook
-            </h1>
-            <p className="mt-1.5 max-w-2xl text-sm text-primary-100 sm:text-base">
-              Maintain private vehicle records, odometer-validated service
-              history, costs, and maintenance reminders for your motorcycles and
-              cars.
-            </p>
-          </div>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h1 className="text-xl font-bold tracking-tight sm:text-2xl">
+            My Garage & Service Logbook
+          </h1>
           <Button
             variant="secondary"
-            className="bg-white text-primary-900 hover:bg-primary-50"
+            className="bg-yellow-100 text-yellow-950 hover:bg-yellow-200"
             onClick={() => setShowAddVehicle((prev) => !prev)}
           >
             <Plus className="h-4 w-4" aria-hidden="true" />
@@ -593,7 +599,7 @@ export function GarageRemoteApp(): React.JSX.Element {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div>
                   <label
                     htmlFor="garage-vehicle-odo"
@@ -622,21 +628,6 @@ export function GarageRemoteApp(): React.JSX.Element {
                     value={newRegLabel}
                     onChange={(e) => setNewRegLabel(e.target.value)}
                     placeholder="e.g., KA-01-TR-0400"
-                    className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900"
-                  />
-                </div>
-                <div>
-                  <label
-                    htmlFor="garage-vehicle-reminder"
-                    className="mb-1 block text-xs font-semibold text-slate-700"
-                  >
-                    Next Maintenance Reminder
-                  </label>
-                  <input
-                    id="garage-vehicle-reminder"
-                    type="text"
-                    value={newReminderLabel}
-                    onChange={(e) => setNewReminderLabel(e.target.value)}
                     className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900"
                   />
                 </div>
@@ -859,25 +850,8 @@ export function GarageRemoteApp(): React.JSX.Element {
           </CardContent>
         </Card>
 
-        {/* Reminders & Notes Column */}
+        {/* Notes Column */}
         <div className="space-y-5">
-          <Card className="border-amber-200 bg-amber-50/40">
-            <CardHeader>
-              <div className="flex items-center gap-2 text-amber-800">
-                <BellRing className="h-4 w-4" aria-hidden="true" />
-                <CardTitle className="text-base text-amber-950">
-                  Maintenance Reminder
-                </CardTitle>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-amber-900">
-                {selectedVehicle.nextReminderLabel ||
-                  'No upcoming reminder configured.'}
-              </p>
-            </CardContent>
-          </Card>
-
           <Card>
             <CardHeader>
               <div className="flex items-center justify-between">

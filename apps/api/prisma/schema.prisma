@@ -258,7 +258,6 @@ model Community {
   slug        String              @unique
   name        String
   description String
-  category    String
   visibility  CommunityVisibility @default(PUBLIC)
   createdAt   DateTime            @default(now())
   updatedAt   DateTime            @updatedAt
@@ -268,7 +267,6 @@ model Community {
   messages    CommunityMessage[]
 
   @@index([visibility])
-  @@index([category])
   @@map("communities")
 }
 
@@ -462,8 +460,6 @@ model GarageVehicle {
   year                  Int
   registrationLabel     String?
   currentOdometerKm     Int                    @default(0)
-  nextReminderLabel     String?
-  nextServiceOdometerKm Int?
   createdAt             DateTime               @default(now())
   updatedAt             DateTime               @updatedAt
 
