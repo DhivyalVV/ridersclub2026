@@ -57,6 +57,7 @@ import {
 } from '@ridersclub/ui';
 import { AdminModerationView } from './admin/AdminModerationView.js';
 import { AuthAndProfileView } from './auth/AuthAndProfileView.js';
+import { useRouteSeo } from './seo/useRouteSeo.js';
 
 const FederatedCommunityRemote = React.lazy(() => import('community/App'));
 const FederatedRidesRemote = React.lazy(() => import('rides/App'));
@@ -149,6 +150,7 @@ export function ShellApp({
 }: ShellAppProps): React.JSX.Element {
   const location = useLocation();
   const navigate = useNavigate();
+  useRouteSeo(location.pathname);
 
   const apiBaseUrl =
     (import.meta.env?.VITE_API_BASE_URL as string | undefined) ||

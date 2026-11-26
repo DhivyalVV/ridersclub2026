@@ -21,6 +21,12 @@ export default defineConfig(({ mode }) => {
       strictPort: true,
       cors: true,
       origin: 'http://localhost:5000',
+      proxy: {
+        '/sitemap.xml': {
+          target: env.VITE_API_ORIGIN || 'http://localhost:4000',
+          changeOrigin: true,
+        },
+      },
     },
     preview: {
       port: 5000,
