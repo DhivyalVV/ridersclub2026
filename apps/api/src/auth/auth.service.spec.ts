@@ -169,5 +169,76 @@ describe('AuthService (OTP expiration, rate limiting & account-linking safeguard
       }),
     ).rejects.toThrow(ConflictException);
   });
+
+  it('registers a new rider via signUpWithPassword and signs in via signInWithPassword', async () => {
+    mockPrisma.userProfile.findUnique.mockResolvedValueOnce(null);
+    mockPrisma.user.findUnique.mockResolvedValueOnce(null);
+
+    const passwordHash = tokenService.hashPassword('SecretPass123!');
+
+    const createdUserRecord = {
+      id: 'user-pw-1',
+      email: 'karthik@ridersclub.dev',
+      phoneNumber: null,
+      googleSubjectId: null,
+      passwordHash,
+      role: UserRole.USER,
+      accountStatus: AccountStatus.ACTIVE,
+      allowDirectMessages: DirectMessagePrivacy.EVERYONE,
+      profile: {
+        id: 'prof-pw-1',
+        userId: 'user-pw-1',
+        username: 'karthik_rc',
+        displayName: 'Karthik R',
+        bio: 'RidersClub member',
+        avatarUrl: null,
+        city: null,
+        showPhone: false,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+    };
+
+    mockPrisma.user.create.mockResolvedValueOnce(createdUserRecord);
+    mockPrisma.userSession.create.mockResolvedValueOnce({ id: 'sess-pw-1' });
+
+    const signUpSession = await authService.signUpWithPassword({
+      username: 'karthik_rc',
+      password: 'SecretPass123!',
+      displayName: 'Karthik R',
+      email: 'karthik@ridersclub.dev',
+    });
+
+    expect(signUpSession.accessToken).toBeTruthy();
+    expect(signUpSession.user.profile.username).toBe('karthik_rc');
+
+    // Now test signInWithPassword by username
+    mockPrisma.userProfile.findUnique.mockResolvedValueOnce({
+      ...createdUserRecord.profile,
+      user: createdUserRecord,
+    });
+    mockPrisma.userSession.create.mockResolvedValueOnce({ id: 'sess-pw-2' });
+
+    const signInSession = await authService.signInWithPassword({
+      identifier: 'karthik_rc',
+      password: 'SecretPass123!',
+    });
+
+    expect(signInSession.accessToken).toBeTruthy();
+    expect(signInSession.user.id).toBe('user-pw-1');
+
+    // Reject wrong password
+    mockPrisma.userProfile.findUnique.mockResolvedValueOnce({
+      ...createdUserRecord.profile,
+      user: createdUserRecord,
+    });
+
+    await expect(
+      authService.signInWithPassword({
+        identifier: 'karthik_rc',
+        password: 'WrongPassword!',
+      }),
+    ).rejects.toThrow(UnauthorizedException);
+  });
 });
 

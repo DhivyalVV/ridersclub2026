@@ -3,12 +3,9 @@ import {
   IsBoolean,
   IsEnum,
   IsNotEmpty,
-  IsNumber,
   IsOptional,
   IsString,
-  Max,
   MaxLength,
-  Min,
   MinLength,
 } from 'class-validator';
 import { HelpCategory, HelpRequestStatus } from '@ridersclub/types';
@@ -36,33 +33,19 @@ export class CreateHelpRequestDto {
 
   @ApiProperty({
     description:
-      'Explicit opt-in consent required before storing or displaying GPS coordinates.',
+      'Explicit opt-in consent required before storing or displaying location details.',
     example: true,
   })
   @IsBoolean()
   locationConsentGranted!: boolean;
 
   @ApiPropertyOptional({
-    example: 'NH-48 Tumakuru Bypass Toll Plaza',
+    example: 'Bengaluru • NH-48 Tumakuru Bypass Toll Plaza',
   })
   @IsOptional()
   @IsString()
   @MaxLength(180)
   locationLabel?: string;
-
-  @ApiPropertyOptional({ example: 13.3409 })
-  @IsOptional()
-  @IsNumber()
-  @Min(-90)
-  @Max(90)
-  latitude?: number;
-
-  @ApiPropertyOptional({ example: 77.101 })
-  @IsOptional()
-  @IsNumber()
-  @Min(-180)
-  @Max(180)
-  longitude?: number;
 }
 
 export class OfferHelpDto {

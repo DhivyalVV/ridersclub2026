@@ -44,7 +44,6 @@ import {
   Button,
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
   EmptyState,
@@ -124,7 +123,7 @@ function mapApiConversationToThread(item: DirectConversationItem): DirectConvers
 }
 
 export interface RemoteComponentOverrides {
-  Community?: React.ComponentType<{ initialSection?: 'communities' | 'blogs' }>;
+  Community?: React.ComponentType<{ initialSection?: 'communities' | 'news' | 'blogs' }>;
   Rides?: React.ComponentType;
   Help?: React.ComponentType;
   Mechanics?: React.ComponentType;
@@ -137,7 +136,7 @@ export interface ShellAppProps {
    * Optional override components used in tests for simulating specific remote states or failures.
    */
   CommunityComponentOverride?: React.ComponentType<{
-    initialSection?: 'communities' | 'blogs';
+    initialSection?: 'communities' | 'news' | 'blogs';
   }>;
   remoteOverrides?: RemoteComponentOverrides;
   initialAuthenticatedUser?: AuthenticatedUserAccount | null;
@@ -847,7 +846,7 @@ export function ShellApp({
               </p>
               {[
                 { to: '/communities', label: 'Communities', icon: Compass },
-                { to: '/blogs', label: 'Rider Blogs', icon: BookOpen },
+                { to: '/news', label: 'News', icon: BookOpen },
                 { to: '/rides', label: 'Group Rides', icon: Car },
                 { to: '/help', label: 'Roadside Help', icon: AlertTriangle, highlight: true },
                 { to: '/garage', label: 'My Garage', icon: Shield },
@@ -956,7 +955,7 @@ export function ShellApp({
                         className="absolute right-0 top-full z-50 mt-1.5 w-72 rounded-xl border border-yellow-200 bg-yellow-50 p-3.5 text-xs leading-relaxed text-yellow-950 shadow-lg sm:w-80"
                       >
                         <p>
-                          Sign in with Phone OTP or Google below to unlock Communities, Rider Blogs, Group
+                          Sign in with Phone OTP or Google below to unlock Communities, News, Group
                           Rides, Roadside Help, My Garage, Mechanics, and Marketplace.
                         </p>
                       </div>
@@ -1000,11 +999,19 @@ export function ShellApp({
                 )}
               />
               <Route
+                path="/news/*"
+                element={renderFederatedModule(
+                  'News',
+                  'http://localhost:5001/remoteEntry.js',
+                  <CommunityComponent initialSection="news" />,
+                )}
+              />
+              <Route
                 path="/blogs/*"
                 element={renderFederatedModule(
-                  'Rider Blogs',
+                  'News',
                   'http://localhost:5001/remoteEntry.js',
-                  <CommunityComponent initialSection="blogs" />,
+                  <CommunityComponent initialSection="news" />,
                 )}
               />
               <Route
@@ -1176,7 +1183,7 @@ export function ShellApp({
             </div>
             <div className="mt-3 grid grid-cols-2 gap-2.5">
               {[
-                { to: '/blogs', label: 'Rider Blogs', icon: BookOpen },
+                { to: '/news', label: 'News', icon: BookOpen },
                 { to: '/marketplace', label: 'Marketplace', icon: ShoppingBag },
                 { to: '/mechanics', label: 'Mechanics', icon: Wrench },
                 ...(isAdminOrModerator
@@ -1236,8 +1243,7 @@ export function ShellApp({
                     />
                     <div className="min-w-0">
                       <p className="truncate text-sm font-bold text-white">
-                        Chatting with {activeConversation.peer.displayName} (@
-                        {activeConversation.peer.username})
+                        Chatting with {activeConversation.peer.displayName}
                       </p>
                       {activeConversation.contextLabel && (
                         <p className="truncate text-[11px] text-primary-200">
@@ -1275,7 +1281,7 @@ export function ShellApp({
                 {conversations.length === 0 ? (
                   <EmptyState
                     title="No conversations yet"
-                    description="Click on any rider profile across Communities, Blogs, Rides, Help, Mechanics, or Marketplace to start a 1:1 chat."
+                    description="Click on any rider profile across Communities, News, Rides, Help, Mechanics, or Marketplace to start a 1:1 chat."
                   />
                 ) : (
                   <div className="divide-y divide-slate-200 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
@@ -1321,10 +1327,7 @@ export function ShellApp({
                                     : 'font-semibold text-slate-800'
                                 }`}
                               >
-                                {thread.peer.displayName}{' '}
-                                <span className="text-xs font-normal text-slate-400">
-                                  @{thread.peer.username}
-                                </span>
+                                {thread.peer.displayName}
                               </span>
                               {lastMessage && (
                                 <span className="shrink-0 text-xs text-slate-400">
@@ -1421,7 +1424,6 @@ export function ShellApp({
             <CardHeader className="flex flex-row items-start justify-between">
               <div>
                 <CardTitle>{inspectedUser.displayName}</CardTitle>
-                <CardDescription>@{inspectedUser.username}</CardDescription>
               </div>
               <Button
                 variant="ghost"

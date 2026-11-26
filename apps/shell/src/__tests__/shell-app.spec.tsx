@@ -53,7 +53,7 @@ const MOCK_ADMIN_USER: AuthenticatedUserAccount = {
 function MockFederatedCommunity({
   initialSection = 'communities',
 }: {
-  initialSection?: 'communities' | 'blogs';
+  initialSection?: 'communities' | 'news' | 'blogs';
 }): React.JSX.Element {
   return (
     <div>
@@ -112,13 +112,13 @@ describe('ShellApp host micro-frontend & Phase 4 multi-remote orchestration', ()
     fireEvent.click(screen.getByText('Trigger Chat From Remote'));
 
     expect(screen.getByRole('dialog', { name: /Individual Direct Chat Drawer/i })).toBeTruthy();
-    expect(screen.getByText('Chatting with Ananya Verma (@ananya_gt)')).toBeTruthy();
+    expect(screen.getByText('Chatting with Ananya Verma')).toBeTruthy();
     expect(screen.getByText(/Initiated from Blog: Valve Clearance Guide/i)).toBeTruthy();
   });
 
-  it('supports direct URL navigation across all 6 federated remotes (Rides, Help, Mechanics, Garage, Marketplace, Blogs) once signed in', async () => {
+  it('supports direct URL navigation across all 6 federated remotes (Rides, Help, Mechanics, Garage, Marketplace, News) once signed in', async () => {
     const routesToVerify: Array<{ path: string; expectedHeading: RegExp }> = [
-      { path: '/blogs', expectedHeading: /Rider Blogs & Technical Guides/i },
+      { path: '/news', expectedHeading: /^News$/i },
       { path: '/rides', expectedHeading: /Group Ride Organization/i },
       { path: '/help', expectedHeading: /Roadside Assistance & Peer Help/i },
       { path: '/mechanics', expectedHeading: /Mechanics & Service Providers/i },
@@ -182,9 +182,10 @@ describe('ShellApp host micro-frontend & Phase 4 multi-remote orchestration', ()
     );
 
     expect(screen.getByText('Welcome to RidersClub')).toBeTruthy();
-    expect(screen.getByText('Sign In with Phone OTP')).toBeTruthy();
+    expect(screen.getByText('Sign In with Username & Password')).toBeTruthy();
     expect(screen.getByText('Continue with Google')).toBeTruthy();
-    expect(screen.getByRole('button', { name: /Send 6-Digit OTP Code/i })).toBeTruthy();
+    expect(screen.getByRole('tab', { name: /^Sign In$/i })).toBeTruthy();
+    expect(screen.getByRole('tab', { name: /^Sign Up$/i })).toBeTruthy();
     expect(screen.getByRole('button', { name: /Sign In with Google/i })).toBeTruthy();
     expect(screen.queryByLabelText('Desktop Navigation')).toBeNull();
   });

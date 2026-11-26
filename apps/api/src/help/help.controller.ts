@@ -43,43 +43,21 @@ export class HelpController {
   @UseGuards(OptionalJwtAuthGuard)
   @ApiOperation({
     summary:
-      'List roadside help requests with status/category filter and optional nearby distance calculation',
+      'List roadside help requests with status/category/search filter',
   })
   @ApiQuery({ name: 'status', required: false })
   @ApiQuery({ name: 'category', required: false })
   @ApiQuery({ name: 'search', required: false })
-  @ApiQuery({ name: 'lat', required: false })
-  @ApiQuery({ name: 'lng', required: false })
-  @ApiQuery({ name: 'radiusKm', required: false })
   async listHelpRequests(
     @Query('status') status?: HelpRequestStatus,
     @Query('category') category?: HelpCategory,
     @Query('search') search?: string,
-    @Query('lat') lat?: string,
-    @Query('lng') lng?: string,
-    @Query('radiusKm') radiusKm?: string,
     @CurrentUser() user?: JwtAccessPayload | null,
   ): Promise<HelpRequestItem[]> {
-    const parsedLat = lat !== undefined ? Number(lat) : undefined;
-    const parsedLng = lng !== undefined ? Number(lng) : undefined;
-    const parsedRadius = radiusKm !== undefined ? Number(radiusKm) : undefined;
-
     return this.helpService.listHelpRequests({
       status,
       category,
       search,
-      viewerLat:
-        parsedLat !== undefined && !Number.isNaN(parsedLat)
-          ? parsedLat
-          : undefined,
-      viewerLng:
-        parsedLng !== undefined && !Number.isNaN(parsedLng)
-          ? parsedLng
-          : undefined,
-      radiusKm:
-        parsedRadius !== undefined && !Number.isNaN(parsedRadius)
-          ? parsedRadius
-          : undefined,
       viewerId: user?.sub,
     });
   }

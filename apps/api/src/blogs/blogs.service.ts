@@ -27,8 +27,6 @@ export class BlogsService {
   ) {}
 
   async listBlogs(params: {
-    search?: string;
-    tag?: string;
     page?: number;
     limit?: number;
     viewerId?: string;
@@ -38,26 +36,10 @@ export class BlogsService {
     const page = Math.max(1, Number(params.page) || 1);
     const limit = Math.min(50, Math.max(1, Number(params.limit) || 10));
     const skip = (page - 1) * limit;
-    const search = params.search?.trim();
-    const tag = params.tag?.trim();
-
-    const where = {
-      ...(search
-        ? {
-            OR: [
-              { title: { contains: search, mode: 'insensitive' as const } },
-              { excerpt: { contains: search, mode: 'insensitive' as const } },
-              { content: { contains: search, mode: 'insensitive' as const } },
-            ],
-          }
-        : {}),
-      ...(tag ? { tags: { has: tag } } : {}),
-    };
 
     const [totalItems, blogs] = await Promise.all([
-      this.prisma.blog.count({ where }),
+      this.prisma.blog.count(),
       this.prisma.blog.findMany({
-        where,
         include: {
           author: { include: { profile: true } },
           _count: {
@@ -144,20 +126,29 @@ export class BlogsService {
     return dto;
   }
 
-  async createBlog(authorId: string, dto: CreateBlogDto): Promise<BlogPostItem> {
+  async createBlog(
+    actor: { sub: string; role: UserRole },
+    dto: CreateBlogDto,
+  ): Promise<BlogPostItem> {
+    if (actor.role !== UserRole.ADMIN) {
+      throw new ForbiddenException('Only administrators can publish news articles.');
+    }
+
     const slug = await this.generateUniqueSlug(dto.title);
     const readTimeMinutes = this.computeReadTimeMinutes(dto.content);
     const normalizedTags = (dto.tags ?? [])
       .map((t) => t.trim())
       .filter((t) => t.length > 0);
+    const trimmedImageUrl = dto.imageUrl?.trim() || null;
 
     const created = await this.prisma.blog.create({
       data: {
-        authorId,
+        authorId: actor.sub,
         slug,
         title: dto.title.trim(),
         excerpt: dto.excerpt.trim(),
         content: dto.content.trim(),
+        imageUrl: trimmedImageUrl,
         tags: normalizedTags,
         readTimeMinutes,
       },
@@ -175,20 +166,16 @@ export class BlogsService {
     actor: { sub: string; role: UserRole },
     dto: UpdateBlogDto,
   ): Promise<BlogPostItem> {
+    if (actor.role !== UserRole.ADMIN) {
+      throw new ForbiddenException('Only administrators can edit news articles.');
+    }
+
     const existing = await this.prisma.blog.findUnique({
       where: { id: blogId },
     });
 
     if (!existing) {
       throw new NotFoundException('Blog post not found.');
-    }
-
-    const isModeratorOrAdmin =
-      actor.role === UserRole.ADMIN || actor.role === UserRole.MODERATOR;
-    if (existing.authorId !== actor.sub && !isModeratorOrAdmin) {
-      throw new ForbiddenException(
-        'Only the blog author or a moderator can edit this blog post.',
-      );
     }
 
     const updatedContent = dto.content !== undefined ? dto.content.trim() : existing.content;
@@ -201,6 +188,9 @@ export class BlogsService {
         ...(dto.excerpt !== undefined ? { excerpt: dto.excerpt.trim() } : {}),
         ...(dto.content !== undefined
           ? { content: updatedContent, readTimeMinutes }
+          : {}),
+        ...(dto.imageUrl !== undefined
+          ? { imageUrl: dto.imageUrl.trim() || null }
           : {}),
         ...(dto.tags !== undefined
           ? {
@@ -221,20 +211,16 @@ export class BlogsService {
     blogId: string,
     actor: { sub: string; role: UserRole },
   ): Promise<{ deleted: boolean; id: string }> {
+    if (actor.role !== UserRole.ADMIN) {
+      throw new ForbiddenException('Only administrators can delete news articles.');
+    }
+
     const existing = await this.prisma.blog.findUnique({
       where: { id: blogId },
     });
 
     if (!existing) {
       throw new NotFoundException('Blog post not found.');
-    }
-
-    const isModeratorOrAdmin =
-      actor.role === UserRole.ADMIN || actor.role === UserRole.MODERATOR;
-    if (existing.authorId !== actor.sub && !isModeratorOrAdmin) {
-      throw new ForbiddenException(
-        'Only the blog author or a moderator can delete this blog post.',
-      );
     }
 
     await this.prisma.blog.delete({ where: { id: blogId } });
@@ -335,6 +321,7 @@ export class BlogsService {
       title: string;
       excerpt: string;
       content: string;
+      imageUrl?: string | null;
       tags: string[];
       readTimeMinutes: number;
       createdAt: Date;
@@ -368,6 +355,7 @@ export class BlogsService {
       title: blog.title,
       excerpt: blog.excerpt,
       content: blog.content,
+      imageUrl: blog.imageUrl ?? null,
       tags: blog.tags,
       readTimeMinutes: blog.readTimeMinutes,
       likesCount: blog._count.reactions,
@@ -391,27 +379,9 @@ export class BlogsService {
         return;
       }
 
-      const author1 = await this.prisma.user.upsert({
-        where: { email: 'kabir.wrench@ridersclub.example' },
-        update: {},
-        create: {
-          email: 'kabir.wrench@ridersclub.example',
-          role: UserRole.USER,
-          allowDirectMessages: DirectMessagePrivacy.EVERYONE,
-          profile: {
-            create: {
-              username: 'kabir_wrench',
-              displayName: 'Kabir Sen',
-              bio: '120,000 km across the Himalayas on 2 & 4 wheels',
-              city: 'Chandigarh',
-            },
-          },
-        },
-      });
-
-      const author2 = await this.prisma.user.upsert({
+      const adminAuthor = await this.prisma.user.upsert({
         where: { email: 'meera.torques@ridersclub.example' },
-        update: {},
+        update: { role: UserRole.ADMIN },
         create: {
           email: 'meera.torques@ridersclub.example',
           role: UserRole.ADMIN,
@@ -419,8 +389,8 @@ export class BlogsService {
           profile: {
             create: {
               username: 'meera_torques',
-              displayName: 'Meera Krishnan',
-              bio: 'Automotive engineer & track-day coach',
+              displayName: 'Meera Krishnan (Admin)',
+              bio: 'RidersClub Editorial & Safety Admin',
               city: 'Chennai',
             },
           },
@@ -430,24 +400,28 @@ export class BlogsService {
       await this.prisma.blog.createMany({
         data: [
           {
-            authorId: author1.id,
+            authorId: adminAuthor.id,
             slug: 'high-altitude-braking-clutch-care-spiti',
             title: 'High-Altitude Braking & Clutch Care Before a Spiti Circuit',
             excerpt:
               'How DOT 4 boiling points, braided steel lines, and clutch free-play adjustments prevent fade on steep mountain descents.',
             content:
               'Long mountain descents from Kunzum La and Rohtang put extreme thermal loads on your braking system. Old hygroscopic brake fluid absorbs moisture over monsoon months, dropping its wet boiling point dramatically.\n\n1. Flush and bleed with fresh DOT 4 or DOT 5.1 fluid before any high-altitude tour.\n2. Inspect sintered brake pad thickness—ensure at least 3.5mm of friction material remains.\n3. Verify 2–3mm of clutch lever free-play at the perch so slipping the clutch in rocky hairpins does not glaze your friction plates.',
+            imageUrl:
+              'https://images.unsplash.com/photo-1558981403-c5f9899a28bc?auto=format&fit=crop&w=1200&q=80',
             tags: ['Brakes', 'Touring Prep', 'Safety'],
             readTimeMinutes: 6,
           },
           {
-            authorId: author2.id,
+            authorId: adminAuthor.id,
             slug: 'pre-purchase-inspection-used-dual-sport-motorcycles',
             title: 'Pre-Purchase Inspection Checklist for Used Dual-Sport Motorcycles',
             excerpt:
               'Inspecting steering head bearings, swingarm play, cold-start compression, and service records before negotiating on the Marketplace.',
             content:
               'Buying a pre-owned adventure or dual-sport motorcycle requires checking components that endure off-road impacts.\n\n1. Ask the seller for a true cold start and listen for cam-chain tensioner rattle.\n2. Lift the front wheel off the ground and check steering stem bearings for center-detent notchiness.\n3. Inspect the lower frame cradle, bash-plate mounts, and wheel rims for flat spots or hairline cracks.\n4. Cross-reference every odometer milestone against workshop invoices.',
+            imageUrl:
+              'https://images.unsplash.com/photo-1568772585407-9361f9bf3a87?auto=format&fit=crop&w=1200&q=80',
             tags: ['Marketplace', 'Inspection', 'Used Bikes'],
             readTimeMinutes: 8,
           },

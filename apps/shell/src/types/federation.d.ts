@@ -4,7 +4,7 @@ declare module 'community/App' {
   import type * as React from 'react';
 
   export interface CommunityRemoteAppProps {
-    initialSection?: 'communities' | 'blogs';
+    initialSection?: 'communities' | 'news' | 'blogs';
   }
 
   export const CommunityRemoteApp: React.ComponentType<CommunityRemoteAppProps>;

@@ -37,7 +37,7 @@ describe('@ridersclub/ui design system components', () => {
     render(<UserProfileCard user={sampleUser} contextLabel="Blog: Ladakh Prep" />);
 
     expect(screen.getByText('Aarav Sharma')).toBeTruthy();
-    expect(screen.getByText('@aarav_rides')).toBeTruthy();
+    expect(screen.queryByText('@aarav_rides')).toBeNull();
 
     const messageButton = screen.getByRole('button', {
       name: /Start private chat with Aarav Sharma/i,

@@ -15,9 +15,9 @@ export async function verifyFederatedShellAndRemotesJourney(page: E2EPage): Prom
   await page.goto('/communities');
   await page.locator('text=Riding Communities').waitFor();
 
-  // 1b. Load Rider Blogs view (:5001)
-  await page.goto('/blogs');
-  await page.locator('text=Rider Blogs & Technical Guides').waitFor();
+  // 1b. Load News view (:5001)
+  await page.goto('/news');
+  await page.locator('h1:has-text("News")').waitFor();
 
   // 2. Navigate to Group Rides (:5002)
   await page.goto('/rides');

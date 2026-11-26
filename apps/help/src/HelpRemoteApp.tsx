@@ -3,8 +3,6 @@ import {
   AlertTriangle,
   CheckCircle2,
   Clock,
-  Compass,
-  ExternalLink,
   Info,
   MapPin,
   PhoneCall,
@@ -43,12 +41,7 @@ const INITIAL_HELP_REQUESTS: HelpRequestItem[] = [
     resolvedAt: null,
     status: HelpRequestStatus.OPEN,
     locationSharedWithConsent: true,
-    locationLabel: 'NH-48 Tumakuru Bypass (13.3409° N, 77.1010° E)',
-    latitude: 13.3409,
-    longitude: 77.101,
-    externalMapUrl:
-      'https://www.openstreetmap.org/?mlat=13.34090&mlon=77.10100#map=15/13.34090/77.10100',
-    distanceKmFromViewer: 6.4,
+    locationLabel: 'Bengaluru • NH-48 Tumakuru Bypass',
     offersCount: 0,
     offers: [],
     isOfferedByViewer: false,
@@ -75,10 +68,6 @@ const INITIAL_HELP_REQUESTS: HelpRequestItem[] = [
     status: HelpRequestStatus.ASSISTANCE_OFFERED,
     locationSharedWithConsent: false,
     locationLabel: 'Location hidden (Contact via 1:1 chat for exact spot)',
-    latitude: null,
-    longitude: null,
-    externalMapUrl: null,
-    distanceKmFromViewer: null,
     offersCount: 1,
     isOfferedByViewer: false,
     offers: [
@@ -130,6 +119,19 @@ function getStoredToken(): string | null {
   }
 }
 
+function getStoredUserCity(): string {
+  try {
+    const raw =
+      window.localStorage.getItem('ridersclub:auth_user') ??
+      window.localStorage.getItem('ridersclub_auth_user');
+    if (!raw) return '';
+    const parsed = JSON.parse(raw) as { profile?: { city?: string | null } };
+    return parsed?.profile?.city?.trim() || '';
+  } catch {
+    return '';
+  }
+}
+
 export function HelpRemoteApp(): React.JSX.Element {
   const [requests, setRequests] = React.useState<HelpRequestItem[]>(
     INITIAL_HELP_REQUESTS,
@@ -137,9 +139,8 @@ export function HelpRemoteApp(): React.JSX.Element {
   const [consentChecked, setConsentChecked] = React.useState(false);
   const [showComposer, setShowComposer] = React.useState(false);
   const [statusFilter, setStatusFilter] = React.useState<
-    'ALL' | HelpRequestStatus
+    'ALL' | 'NEARBY' | HelpRequestStatus
   >('ALL');
-  const [viewMode, setViewMode] = React.useState<'LIST' | 'MAP'>('LIST');
   const [statusNotice, setStatusNotice] = React.useState<string | null>(null);
   const [showHeaderInfo, setShowHeaderInfo] = React.useState(false);
 
@@ -149,11 +150,110 @@ export function HelpRemoteApp(): React.JSX.Element {
   );
   const [newVehicleSummary, setNewVehicleSummary] = React.useState('');
   const [newDescription, setNewDescription] = React.useState('');
-  const [newLocationLabel, setNewLocationLabel] = React.useState(
-    'NICE Road Kanakapura Exit Toll',
+  const [detectedCity, setDetectedCity] = React.useState(() =>
+    getStoredUserCity(),
   );
-  const [newLatitude, setNewLatitude] = React.useState('12.8698');
-  const [newLongitude, setNewLongitude] = React.useState('77.5295');
+  const [isDetectingLocation, setIsDetectingLocation] = React.useState(false);
+  const [newLandmarkLabel, setNewLandmarkLabel] = React.useState('');
+
+  const requestCurrentCityLocation = React.useCallback(() => {
+    if (
+      typeof navigator === 'undefined' ||
+      !navigator.geolocation ||
+      typeof navigator.geolocation.getCurrentPosition !== 'function'
+    ) {
+      return;
+    }
+
+    setIsDetectingLocation(true);
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        const { latitude, longitude } = position.coords;
+        let cityFound = '';
+        try {
+          const res = await fetch(
+            `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${encodeURIComponent(
+              latitude,
+            )}&longitude=${encodeURIComponent(longitude)}&localityLanguage=en`,
+          );
+          if (res.ok) {
+            const data = (await res.json()) as {
+              city?: string;
+              locality?: string;
+              principalSubdivision?: string;
+            };
+            cityFound =
+              data.city?.trim() ||
+              data.locality?.trim() ||
+              data.principalSubdivision?.trim() ||
+              '';
+          }
+        } catch {
+          // Fallback to OpenStreetMap Nominatim if BigDataCloud is unreachable
+        }
+
+        if (!cityFound) {
+          try {
+            const nomRes = await fetch(
+              `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${encodeURIComponent(
+                latitude,
+              )}&lon=${encodeURIComponent(longitude)}`,
+            );
+            if (nomRes.ok) {
+              const nomData = (await nomRes.json()) as {
+                address?: {
+                  city?: string;
+                  town?: string;
+                  village?: string;
+                  county?: string;
+                  state_district?: string;
+                };
+              };
+              cityFound =
+                nomData.address?.city ||
+                nomData.address?.town ||
+                nomData.address?.village ||
+                nomData.address?.state_district ||
+                nomData.address?.county ||
+                '';
+            }
+          } catch {
+            // Keep cityFound empty if offline
+          }
+        }
+
+        if (cityFound) {
+          setDetectedCity(cityFound);
+          setStatusNotice(`Location detected: ${cityFound}`);
+        }
+        setIsDetectingLocation(false);
+      },
+      (error) => {
+        setIsDetectingLocation(false);
+        if (error.code === 1) {
+          setStatusNotice(
+            'Location permission was denied. You can still type your current city and landmark manually.',
+          );
+        } else {
+          setStatusNotice(
+            'Could not detect GPS location automatically. Please verify your device location is turned on or enter your city below.',
+          );
+        }
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 60000,
+      },
+    );
+  }, []);
+
+  const handleToggleLocationConsent = (checked: boolean): void => {
+    setConsentChecked(checked);
+    if (checked) {
+      requestCurrentCityLocation();
+    }
+  };
 
   React.useEffect(() => {
     let active = true;
@@ -180,8 +280,19 @@ export function HelpRemoteApp(): React.JSX.Element {
 
   const filteredRequests = React.useMemo(() => {
     if (statusFilter === 'ALL') return requests;
+    if (statusFilter === 'NEARBY') {
+      const targetCity = detectedCity.trim().toLowerCase();
+      if (!targetCity) {
+        return requests.filter((req) => req.locationSharedWithConsent);
+      }
+      return requests.filter(
+        (req) =>
+          req.locationLabel.toLowerCase().includes(targetCity) ||
+          (req.requester.city ?? '').toLowerCase().includes(targetCity),
+      );
+    }
     return requests.filter((req) => req.status === statusFilter);
-  }, [requests, statusFilter]);
+  }, [requests, statusFilter, detectedCity]);
 
   const handleCreateHelpRequest = async (
     e: React.FormEvent<HTMLFormElement>,
@@ -189,10 +300,11 @@ export function HelpRemoteApp(): React.JSX.Element {
     e.preventDefault();
     if (!newDescription.trim()) return;
 
-    const parsedLat = Number(newLatitude);
-    const parsedLng = Number(newLongitude);
-    const hasValidCoords =
-      consentChecked && !Number.isNaN(parsedLat) && !Number.isNaN(parsedLng);
+    const cityPart = detectedCity.trim();
+    const landmarkPart = newLandmarkLabel.trim();
+    const combinedLocationLabel = [cityPart, landmarkPart]
+      .filter(Boolean)
+      .join(' • ');
 
     const token = getStoredToken();
     if (token) {
@@ -208,9 +320,9 @@ export function HelpRemoteApp(): React.JSX.Element {
             description: newDescription.trim(),
             vehicleSummary: newVehicleSummary.trim() || undefined,
             locationConsentGranted: consentChecked,
-            locationLabel: consentChecked ? newLocationLabel.trim() : undefined,
-            latitude: hasValidCoords ? parsedLat : undefined,
-            longitude: hasValidCoords ? parsedLng : undefined,
+            locationLabel: consentChecked
+              ? combinedLocationLabel || undefined
+              : undefined,
           }),
         });
         if (res.ok) {
@@ -219,6 +331,7 @@ export function HelpRemoteApp(): React.JSX.Element {
           setShowComposer(false);
           setNewDescription('');
           setNewVehicleSummary('');
+          setNewLandmarkLabel('');
           setStatusNotice(
             consentChecked
               ? 'Help request published with explicit location consent.'
@@ -231,6 +344,10 @@ export function HelpRemoteApp(): React.JSX.Element {
       }
     }
 
+    const fallbackLocationLabel = consentChecked
+      ? combinedLocationLabel || 'Current city / landmark shared by rider'
+      : 'Location hidden (Contact via 1:1 chat for exact spot)';
+
     const fallbackCreated: HelpRequestItem = {
       id: `help-${Date.now()}`,
       category: newCategory,
@@ -238,15 +355,7 @@ export function HelpRemoteApp(): React.JSX.Element {
       vehicleSummary: newVehicleSummary.trim() || 'Rider Vehicle',
       status: HelpRequestStatus.OPEN,
       locationSharedWithConsent: consentChecked,
-      locationLabel: consentChecked
-        ? `${newLocationLabel.trim() || 'Shared Highway Spot'} (${hasValidCoords ? `${parsedLat.toFixed(4)}° N, ${parsedLng.toFixed(4)}° E` : 'GPS Shared'})`
-        : 'Location hidden (Contact via 1:1 chat for exact spot)',
-      latitude: hasValidCoords ? parsedLat : null,
-      longitude: hasValidCoords ? parsedLng : null,
-      externalMapUrl: hasValidCoords
-        ? `https://www.openstreetmap.org/?mlat=${parsedLat.toFixed(5)}&mlon=${parsedLng.toFixed(5)}#map=15/${parsedLat.toFixed(5)}/${parsedLng.toFixed(5)}`
-        : null,
-      distanceKmFromViewer: hasValidCoords ? 3.2 : null,
+      locationLabel: fallbackLocationLabel,
       offersCount: 0,
       offers: [],
       isOfferedByViewer: false,
@@ -259,7 +368,7 @@ export function HelpRemoteApp(): React.JSX.Element {
         username: 'aarav_rider',
         avatarUrl: null,
         bio: 'Himalayan 450 • Bengaluru',
-        city: 'Bengaluru',
+        city: cityPart || 'Bengaluru',
         role: UserRole.USER,
         canReceiveDirectMessage: true,
       },
@@ -373,9 +482,6 @@ export function HelpRemoteApp(): React.JSX.Element {
               ...item,
               status: nextStatus,
               locationSharedWithConsent: false,
-              latitude: null,
-              longitude: null,
-              externalMapUrl: null,
               locationLabel: 'Location auto-redacted after request closure',
               resolvedAt:
                 nextStatus === HelpRequestStatus.RESOLVED
@@ -386,7 +492,7 @@ export function HelpRemoteApp(): React.JSX.Element {
       ),
     );
     setStatusNotice(
-      `Help request marked ${nextStatus} and GPS coordinates automatically redacted.`,
+      `Help request marked ${nextStatus} and location automatically redacted.`,
     );
   };
 
@@ -463,11 +569,12 @@ export function HelpRemoteApp(): React.JSX.Element {
               <input
                 type="checkbox"
                 checked={consentChecked}
-                onChange={(e) => setConsentChecked(e.target.checked)}
+                onChange={(e) => handleToggleLocationConsent(e.target.checked)}
                 className="h-4 w-4 rounded border-white/40 accent-yellow-500"
               />
               <span>
                 Share current GPS coordinates for this help request only
+                {isDetectingLocation ? ' (Detecting city...)' : detectedCity ? ` (${detectedCity})` : ''}
               </span>
             </label>
           </div>
@@ -594,7 +701,39 @@ export function HelpRemoteApp(): React.JSX.Element {
               </div>
 
               {consentChecked && (
-                <div className="grid grid-cols-1 gap-3 rounded-xl border border-yellow-200 bg-white p-3.5 sm:grid-cols-3">
+                <div className="grid grid-cols-1 gap-3 rounded-xl border border-yellow-200 bg-white p-3.5 sm:grid-cols-2">
+                  <div>
+                    <div className="mb-1 flex items-center justify-between">
+                      <label
+                        htmlFor="help-city-input"
+                        className="block text-xs font-semibold text-slate-700"
+                      >
+                        Current City / Location
+                      </label>
+                      <button
+                        type="button"
+                        onClick={requestCurrentCityLocation}
+                        disabled={isDetectingLocation}
+                        className="text-[11px] font-semibold text-primary-700 underline hover:text-primary-900 disabled:opacity-50"
+                      >
+                        {isDetectingLocation
+                          ? 'Detecting city...'
+                          : 'Detect My City'}
+                      </button>
+                    </div>
+                    <input
+                      id="help-city-input"
+                      type="text"
+                      value={detectedCity}
+                      onChange={(e) => setDetectedCity(e.target.value)}
+                      placeholder={
+                        isDetectingLocation
+                          ? 'Detecting your current city...'
+                          : 'e.g., Bengaluru'
+                      }
+                      className="w-full rounded-lg border border-slate-300 px-2.5 py-1.5 text-xs text-slate-900"
+                    />
+                  </div>
                   <div>
                     <label
                       htmlFor="help-location-label"
@@ -605,39 +744,10 @@ export function HelpRemoteApp(): React.JSX.Element {
                     <input
                       id="help-location-label"
                       type="text"
-                      value={newLocationLabel}
-                      onChange={(e) => setNewLocationLabel(e.target.value)}
-                      className="w-full rounded-lg border border-slate-300 px-2.5 py-1.5 text-xs"
-                    />
-                  </div>
-                  <div>
-                    <label
-                      htmlFor="help-lat-input"
-                      className="mb-1 block text-xs font-semibold text-slate-700"
-                    >
-                      Latitude
-                    </label>
-                    <input
-                      id="help-lat-input"
-                      type="text"
-                      value={newLatitude}
-                      onChange={(e) => setNewLatitude(e.target.value)}
-                      className="w-full rounded-lg border border-slate-300 px-2.5 py-1.5 text-xs"
-                    />
-                  </div>
-                  <div>
-                    <label
-                      htmlFor="help-lng-input"
-                      className="mb-1 block text-xs font-semibold text-slate-700"
-                    >
-                      Longitude
-                    </label>
-                    <input
-                      id="help-lng-input"
-                      type="text"
-                      value={newLongitude}
-                      onChange={(e) => setNewLongitude(e.target.value)}
-                      className="w-full rounded-lg border border-slate-300 px-2.5 py-1.5 text-xs"
+                      value={newLandmarkLabel}
+                      onChange={(e) => setNewLandmarkLabel(e.target.value)}
+                      placeholder="e.g., NICE Road Kanakapura Exit Toll"
+                      className="w-full rounded-lg border border-slate-300 px-2.5 py-1.5 text-xs text-slate-900"
                     />
                   </div>
                 </div>
@@ -661,7 +771,7 @@ export function HelpRemoteApp(): React.JSX.Element {
         </Card>
       )}
 
-      {/* Filter & Discovery View Switcher */}
+      {/* Filter Bar */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap items-center gap-2">
           {(
@@ -686,85 +796,21 @@ export function HelpRemoteApp(): React.JSX.Element {
         <div className="flex items-center gap-2">
           <Button
             size="sm"
-            variant={viewMode === 'LIST' ? 'default' : 'outline'}
-            onClick={() => setViewMode('LIST')}
+            variant={statusFilter === 'NEARBY' ? 'default' : 'outline'}
+            onClick={() => {
+              setStatusFilter((prev) => (prev === 'NEARBY' ? 'ALL' : 'NEARBY'));
+              if (!detectedCity) {
+                requestCurrentCityLocation();
+              }
+            }}
           >
-            Nearby List ({filteredRequests.length})
-          </Button>
-          <Button
-            size="sm"
-            variant={viewMode === 'MAP' ? 'default' : 'outline'}
-            onClick={() => setViewMode('MAP')}
-          >
-            <Compass className="h-3.5 w-3.5" aria-hidden="true" />
-            Radar & Map View
+            <MapPin className="h-3.5 w-3.5" aria-hidden="true" />
+            {detectedCity
+              ? `Nearby (${detectedCity})`
+              : `Nearby List (${filteredRequests.length})`}
           </Button>
         </div>
       </div>
-
-      {/* Optional Radar & Map Overview */}
-      {viewMode === 'MAP' && (
-        <Card className="border-yellow-200 bg-slate-900 text-white">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base text-white">
-              <Compass
-                className="h-5 w-5 text-yellow-400"
-                aria-hidden="true"
-              />
-              Consent-Filtered Roadside Radar (OpenStreetMap Integration)
-            </CardTitle>
-            <CardDescription className="text-slate-300">
-              Only active requests where the rider explicitly granted location
-              consent appear with pins below. Resolved and no-consent requests
-              automatically hide coordinates.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {filteredRequests.filter(
-              (r) =>
-                r.locationSharedWithConsent &&
-                r.latitude !== null &&
-                r.longitude !== null,
-            ).length === 0 ? (
-              <p className="rounded-xl bg-white/5 p-4 text-xs text-slate-300">
-                No active requests currently broadcasting GPS coordinates.
-              </p>
-            ) : (
-              filteredRequests
-                .filter(
-                  (r) =>
-                    r.locationSharedWithConsent &&
-                    r.latitude !== null &&
-                    r.longitude !== null,
-                )
-                .map((pin) => (
-                  <div
-                    key={pin.id}
-                    className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-white/10 bg-white/5 p-3.5 text-xs"
-                  >
-                    <div>
-                      <span className="font-semibold text-yellow-300">
-                        {pin.category.replace(/_/g, ' ')}
-                      </span>{' '}
-                      • {pin.requester.displayName} ({pin.locationLabel})
-                    </div>
-                    {pin.externalMapUrl && (
-                      <a
-                        href={pin.externalMapUrl}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="inline-flex items-center gap-1 font-semibold text-primary-300 underline hover:text-white"
-                      >
-                        Open OpenStreetMap Pin
-                        <ExternalLink className="h-3.5 w-3.5" />
-                      </a>
-                    )}
-                  </div>
-                ))
-            )}
-          </CardContent>
-        </Card>
-      )}
 
       {/* Active Nearby Requests */}
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
@@ -813,11 +859,6 @@ export function HelpRemoteApp(): React.JSX.Element {
                       {req.vehicleSummary}
                     </span>
                   )}
-                  {req.distanceKmFromViewer !== null && !isClosed && (
-                    <span className="font-semibold text-primary-700">
-                      ~{req.distanceKmFromViewer} km away
-                    </span>
-                  )}
                 </CardDescription>
               </CardHeader>
 
@@ -834,17 +875,6 @@ export function HelpRemoteApp(): React.JSX.Element {
                     />
                     <span>{req.locationLabel}</span>
                   </div>
-                  {req.externalMapUrl && req.locationSharedWithConsent && (
-                    <a
-                      href={req.externalMapUrl}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="inline-flex items-center gap-1 font-semibold text-primary-700 hover:underline"
-                    >
-                      Map
-                      <ExternalLink className="h-3 w-3" aria-hidden="true" />
-                    </a>
-                  )}
                 </div>
 
                 <div>

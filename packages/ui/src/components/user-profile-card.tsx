@@ -102,16 +102,17 @@ export function UserProfileCard({
               </Badge>
             )}
           </div>
-          <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500">
-            <span>@{user.username}</span>
-            {user.city && (
-              <span className="inline-flex items-center gap-0.5">
-                <MapPin className="h-3 w-3" aria-hidden="true" />
-                {user.city}
-              </span>
-            )}
-            {subtitle && <span>• {subtitle}</span>}
-          </div>
+          {(user.city || subtitle) && (
+            <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500">
+              {user.city && (
+                <span className="inline-flex items-center gap-0.5">
+                  <MapPin className="h-3 w-3" aria-hidden="true" />
+                  {user.city}
+                </span>
+              )}
+              {subtitle && <span>{user.city ? `• ${subtitle}` : subtitle}</span>}
+            </div>
+          )}
           {!compact && user.bio && (
             <p className="mt-1 line-clamp-1 text-xs text-slate-600">{user.bio}</p>
           )}

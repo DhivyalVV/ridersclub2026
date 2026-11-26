@@ -1,4 +1,11 @@
-import { createHmac, randomInt, createHash, timingSafeEqual } from 'node:crypto';
+import {
+  createHmac,
+  randomInt,
+  createHash,
+  timingSafeEqual,
+  randomBytes,
+  scryptSync,
+} from 'node:crypto';
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { UserRole } from '@ridersclub/types';
@@ -36,6 +43,25 @@ export class TokenService {
     const b = Buffer.from(expectedHash, 'utf8');
     if (a.length !== b.length) return false;
     return timingSafeEqual(a, b);
+  }
+
+  hashPassword(plainPassword: string): string {
+    const salt = randomBytes(16).toString('hex');
+    const derivedKey = scryptSync(plainPassword, salt, 64).toString('hex');
+    return `${salt}:${derivedKey}`;
+  }
+
+  verifyPassword(plainPassword: string, storedHash: string): boolean {
+    const [salt, expectedKeyHex] = storedHash.split(':');
+    if (!salt || !expectedKeyHex) {
+      return false;
+    }
+    const candidateKey = scryptSync(plainPassword, salt, 64);
+    const expectedKey = Buffer.from(expectedKeyHex, 'hex');
+    if (candidateKey.length !== expectedKey.length) {
+      return false;
+    }
+    return timingSafeEqual(candidateKey, expectedKey);
   }
 
   signAccessToken(params: {

@@ -25,6 +25,8 @@ import { AuthService } from './auth.service';
 import {
   GoogleSignInDto,
   LinkPhoneDto,
+  PasswordSignInDto,
+  PasswordSignUpDto,
   RequestOtpDto,
   VerifyOtpDto,
 } from './dto/auth.dto';
@@ -38,6 +40,48 @@ import {
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
+
+  @Post('signup')
+  @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({
+    summary: 'Register a new rider account with username and password',
+  })
+  @ApiResponse({ status: 201, description: 'Account created and session established' })
+  @ApiResponse({ status: 409, description: 'Username or email already exists' })
+  async signUp(
+    @Body() dto: PasswordSignUpDto,
+    @Req() req: AuthenticatedRequest,
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<AuthSessionResponse> {
+    const session = await this.authService.signUpWithPassword(dto, {
+      userAgent: req.headers['user-agent'],
+      ipAddress: req.ip,
+    });
+
+    this.attachSessionCookie(res, session.accessToken, session.expiresAt);
+    return session;
+  }
+
+  @Post('signin')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Sign in using username (or email) and password',
+  })
+  @ApiResponse({ status: 200, description: 'Authenticated session established' })
+  @ApiResponse({ status: 401, description: 'Invalid credentials' })
+  async signIn(
+    @Body() dto: PasswordSignInDto,
+    @Req() req: AuthenticatedRequest,
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<AuthSessionResponse> {
+    const session = await this.authService.signInWithPassword(dto, {
+      userAgent: req.headers['user-agent'],
+      ipAddress: req.ip,
+    });
+
+    this.attachSessionCookie(res, session.accessToken, session.expiresAt);
+    return session;
+  }
 
   @Post('otp/request')
   @HttpCode(HttpStatus.OK)

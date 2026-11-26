@@ -8,9 +8,11 @@ if (!rootElement) {
   throw new Error('Failed to find #root element in apps/community');
 }
 
-const initialSection = window.location.pathname.startsWith('/blogs')
-  ? 'blogs'
-  : 'communities';
+const initialSection =
+  window.location.pathname.startsWith('/news') ||
+  window.location.pathname.startsWith('/blogs')
+    ? 'news'
+    : 'communities';
 
 createRoot(rootElement).render(
   <React.StrictMode>

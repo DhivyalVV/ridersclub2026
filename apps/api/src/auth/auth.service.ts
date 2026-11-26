@@ -22,6 +22,8 @@ import { PrismaService } from '../prisma/prisma.service';
 import {
   GoogleSignInDto,
   LinkPhoneDto,
+  PasswordSignInDto,
+  PasswordSignUpDto,
   RequestOtpDto,
   VerifyOtpDto,
 } from './dto/auth.dto';
@@ -126,6 +128,150 @@ export class AuthService {
         },
         include: { profile: true },
       });
+    }
+
+    if (user.accountStatus !== AccountStatus.ACTIVE) {
+      throw new ForbiddenException(
+        `Cannot sign in: account is currently ${user.accountStatus}.`,
+      );
+    }
+
+    return this.createSessionForUser(this.mapUserToAccountDto(user), meta);
+  }
+
+  async signUpWithPassword(
+    dto: PasswordSignUpDto,
+    meta?: { userAgent?: string; ipAddress?: string },
+  ): Promise<AuthSessionResponse> {
+    const normalizedUsername = dto.username.trim().toLowerCase().replace(/^@/, '');
+    const normalizedEmail = dto.email?.trim().toLowerCase() || null;
+    const displayName = dto.displayName?.trim() || normalizedUsername;
+
+    const existingProfile = await this.prisma.userProfile.findUnique({
+      where: { username: normalizedUsername },
+    });
+
+    if (existingProfile) {
+      throw new ConflictException(
+        `Username @${normalizedUsername} is already taken. Please choose another handle.`,
+      );
+    }
+
+    if (normalizedEmail) {
+      const existingEmailUser = await this.prisma.user.findUnique({
+        where: { email: normalizedEmail },
+      });
+
+      if (existingEmailUser) {
+        throw new ConflictException(
+          'An account with this email already exists. Please sign in or use Google Sign-In.',
+        );
+      }
+    }
+
+    const adminEmailsRaw = this.configService.get<string>(
+      'ADMIN_EMAILS',
+      'dhivyalvv@gmail.com,admin@ridersclub.dev,admin.governance@ridersclub.example',
+    );
+    const adminEmailSet = new Set(
+      adminEmailsRaw
+        .split(',')
+        .map((e) => e.trim().toLowerCase())
+        .filter(Boolean),
+    );
+    const isDesignatedAdminEmail =
+      normalizedEmail !== null && adminEmailSet.has(normalizedEmail);
+
+    const passwordHash = this.tokenService.hashPassword(dto.password);
+
+    const user = await this.prisma.user.create({
+      data: {
+        email: normalizedEmail,
+        passwordHash,
+        role: isDesignatedAdminEmail ? UserRole.ADMIN : UserRole.USER,
+        accountStatus: AccountStatus.ACTIVE,
+        allowDirectMessages: DirectMessagePrivacy.EVERYONE,
+        profile: {
+          create: {
+            username: normalizedUsername,
+            displayName,
+            bio: isDesignatedAdminEmail
+              ? 'RidersClub Platform Administrator'
+              : 'RidersClub member',
+          },
+        },
+      },
+      include: { profile: true },
+    });
+
+    return this.createSessionForUser(this.mapUserToAccountDto(user), meta);
+  }
+
+  async signInWithPassword(
+    dto: PasswordSignInDto,
+    meta?: { userAgent?: string; ipAddress?: string },
+  ): Promise<AuthSessionResponse> {
+    const rawIdentifier = dto.identifier.trim().toLowerCase();
+    const cleanedUsername = rawIdentifier.replace(/^@/, '');
+
+    let user: {
+      id: string;
+      email: string | null;
+      phoneNumber: string | null;
+      googleSubjectId: string | null;
+      passwordHash: string | null;
+      role: string;
+      accountStatus: string;
+      allowDirectMessages: string;
+      profile: {
+        id: string;
+        userId: string;
+        username: string;
+        displayName: string;
+        bio: string | null;
+        avatarUrl: string | null;
+        city: string | null;
+        showPhone: boolean;
+        createdAt: Date;
+        updatedAt: Date;
+      } | null;
+    } | null = null;
+
+    if (rawIdentifier.includes('@') && rawIdentifier.includes('.')) {
+      user = await this.prisma.user.findUnique({
+        where: { email: rawIdentifier },
+        include: { profile: true },
+      });
+    }
+
+    if (!user) {
+      const profileWithUser = await this.prisma.userProfile.findUnique({
+        where: { username: cleanedUsername },
+        include: {
+          user: {
+            include: { profile: true },
+          },
+        },
+      });
+      user = profileWithUser?.user ?? null;
+    }
+
+    if (!user) {
+      throw new UnauthorizedException('Invalid username/email or password.');
+    }
+
+    if (!user.passwordHash) {
+      throw new UnauthorizedException(
+        'This account uses Google Sign-In and does not have a password set. Please sign in with Google.',
+      );
+    }
+
+    const isValidPassword = this.tokenService.verifyPassword(
+      dto.password,
+      user.passwordHash,
+    );
+    if (!isValidPassword) {
+      throw new UnauthorizedException('Invalid username/email or password.');
     }
 
     if (user.accountStatus !== AccountStatus.ACTIVE) {

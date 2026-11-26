@@ -87,9 +87,6 @@ export class HelpService {
     status?: HelpRequestStatus;
     category?: HelpCategory;
     search?: string;
-    viewerLat?: number;
-    viewerLng?: number;
-    radiusKm?: number;
     viewerId?: string;
   }): Promise<HelpRequestItem[]> {
     await this.ensureInitialHelpRequestsSeeded();
@@ -122,28 +119,11 @@ export class HelpService {
       orderBy: { createdAt: 'desc' },
     });
 
-    const items = records.map((record) =>
+    return records.map((record) =>
       this.mapHelpRequestToDto(record, {
         viewerId: params.viewerId,
-        viewerLat: params.viewerLat,
-        viewerLng: params.viewerLng,
       }),
     );
-
-    if (
-      typeof params.radiusKm === 'number' &&
-      params.radiusKm > 0 &&
-      typeof params.viewerLat === 'number' &&
-      typeof params.viewerLng === 'number'
-    ) {
-      return items.filter(
-        (item) =>
-          item.distanceKmFromViewer === null ||
-          item.distanceKmFromViewer <= params.radiusKm!,
-      );
-    }
-
-    return items;
   }
 
   async getHelpRequestById(
@@ -176,20 +156,11 @@ export class HelpService {
     requesterId: string,
     dto: CreateHelpRequestDto,
   ): Promise<HelpRequestItem> {
-    // Strict location consent enforcement: never store or expose coordinates
+    // Strict location consent enforcement: never store or expose location
     // unless locationConsentGranted === true.
     const consentGranted = Boolean(dto.locationConsentGranted);
-    const latitude =
-      consentGranted && typeof dto.latitude === 'number' ? dto.latitude : null;
-    const longitude =
-      consentGranted && typeof dto.longitude === 'number'
-        ? dto.longitude
-        : null;
     const locationLabel = consentGranted
-      ? dto.locationLabel?.trim() ||
-        (latitude !== null && longitude !== null
-          ? `Shared GPS (${latitude.toFixed(4)}° N, ${longitude.toFixed(4)}° E)`
-          : 'General area shared (exact coordinates omitted)')
+      ? dto.locationLabel?.trim() || 'Current city / landmark shared by rider'
       : 'Location hidden (Contact via 1:1 chat for exact spot)';
 
     const created = await this.prisma.helpRequest.create({
@@ -201,8 +172,8 @@ export class HelpService {
         status: HelpRequestStatus.OPEN,
         locationConsentGranted: consentGranted,
         locationLabel,
-        latitude,
-        longitude,
+        latitude: null,
+        longitude: null,
       },
       include: {
         requester: { include: { profile: true } },
@@ -345,40 +316,11 @@ export class HelpService {
     record: HelpRequestRecordWithRelations,
     options: {
       viewerId?: string;
-      viewerLat?: number;
-      viewerLng?: number;
     },
   ): HelpRequestItem {
     const isClosed =
       record.status === HelpRequestStatus.RESOLVED ||
       record.status === HelpRequestStatus.CANCELLED;
-
-    const showCoordinates =
-      record.locationConsentGranted &&
-      !isClosed &&
-      record.latitude !== null &&
-      record.longitude !== null;
-
-    const latitude = showCoordinates ? record.latitude : null;
-    const longitude = showCoordinates ? record.longitude : null;
-
-    const externalMapUrl =
-      latitude !== null && longitude !== null
-        ? `https://www.openstreetmap.org/?mlat=${latitude.toFixed(5)}&mlon=${longitude.toFixed(5)}#map=15/${latitude.toFixed(5)}/${longitude.toFixed(5)}`
-        : null;
-
-    const distanceKmFromViewer =
-      latitude !== null &&
-      longitude !== null &&
-      typeof options.viewerLat === 'number' &&
-      typeof options.viewerLng === 'number'
-        ? this.computeHaversineKm(
-            options.viewerLat,
-            options.viewerLng,
-            latitude,
-            longitude,
-          )
-        : null;
 
     const offers: HelpRequestOfferItem[] = record.offers.map((offer) => ({
       id: offer.id,
@@ -407,10 +349,7 @@ export class HelpService {
     const locationLabel = isClosed
       ? 'Location auto-redacted after request closure'
       : record.locationConsentGranted
-        ? record.locationLabel ||
-          (latitude !== null && longitude !== null
-            ? `Shared GPS (${latitude.toFixed(4)}° N, ${longitude.toFixed(4)}° E)`
-            : 'General area shared by rider')
+        ? record.locationLabel || 'Current city / landmark shared by rider'
         : 'Location hidden (Contact via 1:1 chat for exact spot)';
 
     return {
@@ -421,10 +360,6 @@ export class HelpService {
       status: record.status as HelpRequestStatus,
       locationSharedWithConsent: record.locationConsentGranted && !isClosed,
       locationLabel,
-      latitude,
-      longitude,
-      externalMapUrl,
-      distanceKmFromViewer,
       requester: this.profilesService.mapUserWithProfileToPublicSummary(
         record.requester,
       ),
@@ -435,26 +370,6 @@ export class HelpService {
       createdAtLabel: this.formatRelativeTime(record.createdAt),
       resolvedAt: record.resolvedAt ? record.resolvedAt.toISOString() : null,
     };
-  }
-
-  private computeHaversineKm(
-    lat1: number,
-    lon1: number,
-    lat2: number,
-    lon2: number,
-  ): number {
-    const toRad = (deg: number): number => (deg * Math.PI) / 180;
-    const earthRadiusKm = 6371;
-    const dLat = toRad(lat2 - lat1);
-    const dLon = toRad(lon2 - lon1);
-    const a =
-      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-      Math.cos(toRad(lat1)) *
-        Math.cos(toRad(lat2)) *
-        Math.sin(dLon / 2) *
-        Math.sin(dLon / 2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    return Math.round(earthRadiusKm * c * 10) / 10;
   }
 
   private formatRelativeTime(date: Date): string {
@@ -531,9 +446,9 @@ export class HelpService {
           vehicleSummary: 'Hero XPulse 200 4V (Rally Edition)',
           status: HelpRequestStatus.OPEN,
           locationConsentGranted: true,
-          locationLabel: 'NH-48 Tumakuru Bypass (13.3409° N, 77.1010° E)',
-          latitude: 13.3409,
-          longitude: 77.101,
+          locationLabel: 'Bengaluru • NH-48 Tumakuru Bypass',
+          latitude: null,
+          longitude: null,
         },
       });
 
