@@ -1131,10 +1131,8 @@ export function ShellApp({
           <NavLink
             to="/help"
             className={({ isActive }) =>
-              `flex flex-col items-center gap-0.5 rounded-xl px-3 py-1 text-[11px] font-semibold ${
-                isActive
-                  ? 'bg-amber-600 text-white'
-                  : 'bg-amber-50 text-amber-800 border border-amber-200'
+              `flex flex-col items-center gap-0.5 px-2 py-1 text-[11px] font-medium ${
+                isActive ? 'text-primary-600' : 'text-slate-600'
               }`
             }
           >

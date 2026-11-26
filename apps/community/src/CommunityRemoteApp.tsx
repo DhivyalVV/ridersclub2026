@@ -1037,7 +1037,10 @@ export function CommunityRemoteApp({
         });
         return;
       }
-    } catch {
+    } catch (err) {
+      if (err instanceof Error && err.name === 'AbortError') {
+        return;
+      }
       // Fallback to copying link
     }
     try {
@@ -1740,7 +1743,7 @@ export function CommunityRemoteApp({
           <div
             role="dialog"
             aria-label={`${activeCommunity.name} Community View`}
-            className="fixed inset-0 z-40 flex flex-col bg-background"
+            className="!mt-0 fixed inset-0 z-40 flex flex-col bg-background"
           >
             {/* Top Header Bar */}
             <div className="border-b border-slate-200 bg-primary-900 py-3 pl-2 pr-4 text-white shadow-sm sm:px-6 sm:py-3.5">
@@ -2080,7 +2083,7 @@ export function CommunityRemoteApp({
                 <ul
                   role="list"
                   aria-label="Community search results"
-                  className="divide-y divide-slate-100 bg-white"
+                  className="space-y-2.5 bg-slate-50/60 p-3 sm:p-4"
                 >
                   {filteredCommunities.map((community) => {
                     const isApproved =
@@ -2095,7 +2098,7 @@ export function CommunityRemoteApp({
                       <li
                         key={community.id}
                         onClick={() => void handleOpenCommunityHub(community)}
-                        className="flex cursor-pointer items-center justify-between gap-3 px-4 py-3.5 transition-colors hover:bg-slate-50 sm:px-5"
+                        className="flex cursor-pointer items-center justify-between gap-3 rounded-xl border border-slate-200/90 bg-white px-4 py-3.5 shadow-sm transition-colors hover:border-primary-200 hover:bg-slate-50 sm:px-5"
                       >
                         <div className="flex min-w-0 flex-1 items-center gap-3.5">
                           <Avatar
@@ -2160,7 +2163,7 @@ export function CommunityRemoteApp({
               <ul
                 role="list"
                 aria-label="My communities group list"
-                className="divide-y divide-slate-100 bg-white"
+                className="space-y-2.5 bg-slate-50/60 p-3 sm:p-4"
               >
                 {displayedCommunities.map((community) => {
                   const isPending =
@@ -2173,7 +2176,7 @@ export function CommunityRemoteApp({
                     <li
                       key={community.id}
                       onClick={() => void handleOpenCommunityHub(community)}
-                      className="flex cursor-pointer items-center gap-3.5 px-4 py-3.5 transition-colors hover:bg-slate-50 sm:px-5"
+                      className="flex cursor-pointer items-center gap-3.5 rounded-xl border border-slate-200/90 bg-white px-4 py-3.5 shadow-sm transition-colors hover:border-primary-200 hover:bg-slate-50 sm:px-5"
                     >
                       <Avatar
                         alt={community.name}
