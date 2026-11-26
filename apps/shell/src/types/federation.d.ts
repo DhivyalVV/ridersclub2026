@@ -45,3 +45,10 @@ declare module 'marketplace/App' {
   export const MarketplaceRemoteApp: React.ComponentType;
   export default MarketplaceRemoteApp;
 }
+
+declare module 'news/App' {
+  import type * as React from 'react';
+
+  export const NewsRemoteApp: React.ComponentType;
+  export default NewsRemoteApp;
+}

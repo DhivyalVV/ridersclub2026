@@ -43,6 +43,7 @@ import {
   CardTitle,
   MessageUserButton,
   UserProfileCard,
+  openUserProfileModal,
 } from '@ridersclub/ui';
 
 export interface CommunityRemoteAppProps {
@@ -1387,7 +1388,7 @@ export function CommunityRemoteApp({
           ? 'Riding Communities Federated Module'
           : 'News Federated Module'
       }
-      className="space-y-6"
+      className="flex flex-1 flex-col space-y-6"
     >
       {/* Header Banner (hidden when a full-screen community chat or full news page is open) */}
       {!(activeSection === 'communities' && activeCommunity) &&
@@ -1982,22 +1983,19 @@ export function CommunityRemoteApp({
                                     : 'bg-slate-100 text-slate-900'
                                 }`}
                               >
-                                <div className="mb-1 flex items-center gap-2">
-                                  <Avatar
-                                    alt={msg.sender.displayName}
-                                    fallbackText={msg.sender.displayName}
-                                    src={msg.sender.avatarUrl}
-                                    size="sm"
-                                  />
-                                  <p
-                                    className={`text-xs font-semibold ${
-                                      isMe ? 'text-white' : 'text-slate-900'
-                                    }`}
-                                  >
-                                    {msg.sender.displayName}
-                                  </p>
-                                </div>
-                                <p className={isMe ? 'text-white' : 'text-slate-800'}>
+                                <button
+                                  type="button"
+                                  onClick={() => openUserProfileModal(msg.sender)}
+                                  aria-label={`View profile of ${msg.sender.displayName}`}
+                                  className={`mb-1 block rounded text-left text-xs font-bold tracking-wide hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600 ${
+                                    isMe
+                                      ? 'text-amber-200 hover:text-amber-100'
+                                      : 'text-primary-700 hover:text-primary-900'
+                                  }`}
+                                >
+                                  {msg.sender.displayName}
+                                </button>
+                                <p className={isMe ? 'text-white' : 'text-slate-700'}>
                                   {msg.body}
                                 </p>
                               </div>
@@ -2030,7 +2028,7 @@ export function CommunityRemoteApp({
           </div>
         ) : (
           /* WhatsApp-style Communities Group List View */
-          <Card className="overflow-hidden border border-slate-200 shadow-sm">
+          <Card className="flex flex-1 flex-col overflow-hidden border border-slate-200 shadow-sm">
             {/* Top Search Bar inside the Group List */}
             <div className="border-b border-slate-200 bg-slate-50 p-4">
               <div className="relative w-full">
@@ -2068,7 +2066,7 @@ export function CommunityRemoteApp({
             {/* Group List Body */}
             {normalizedSearch ? (
               filteredCommunities.length === 0 ? (
-                <div className="flex flex-col items-center justify-center px-6 py-12 text-center">
+                <div className="flex flex-1 flex-col items-center justify-center px-6 py-12 text-center">
                   <div className="flex h-12 w-12 items-center justify-center rounded-full bg-slate-100 text-slate-500">
                     <Search className="h-6 w-6" aria-hidden="true" />
                   </div>
@@ -2083,7 +2081,7 @@ export function CommunityRemoteApp({
                 <ul
                   role="list"
                   aria-label="Community search results"
-                  className="space-y-2.5 bg-slate-50/60 p-3 sm:p-4"
+                  className="flex-1 space-y-2.5 bg-slate-50/60 py-2.5"
                 >
                   {filteredCommunities.map((community) => {
                     const isApproved =
@@ -2098,7 +2096,7 @@ export function CommunityRemoteApp({
                       <li
                         key={community.id}
                         onClick={() => void handleOpenCommunityHub(community)}
-                        className="flex cursor-pointer items-center justify-between gap-3 rounded-xl border border-slate-200/90 bg-white px-4 py-3.5 shadow-sm transition-colors hover:border-primary-200 hover:bg-slate-50 sm:px-5"
+                        className="flex cursor-pointer items-center justify-between gap-3 border-y border-slate-200/90 bg-white px-4 py-3.5 shadow-sm transition-colors hover:border-primary-200 hover:bg-slate-50 sm:px-5"
                       >
                         <div className="flex min-w-0 flex-1 items-center gap-3.5">
                           <Avatar
@@ -2148,7 +2146,7 @@ export function CommunityRemoteApp({
                 </ul>
               )
             ) : myCommunities.length === 0 ? (
-              <div className="flex flex-col items-center justify-center px-6 py-14 text-center">
+              <div className="flex flex-1 flex-col items-center justify-center px-6 py-14 text-center">
                 <div className="flex h-14 w-14 items-center justify-center rounded-full bg-slate-100 text-slate-500">
                   <MessageCircle className="h-7 w-7" aria-hidden="true" />
                 </div>
@@ -2163,7 +2161,7 @@ export function CommunityRemoteApp({
               <ul
                 role="list"
                 aria-label="My communities group list"
-                className="space-y-2.5 bg-slate-50/60 p-3 sm:p-4"
+                className="flex-1 space-y-2.5 bg-slate-50/60 py-2.5"
               >
                 {displayedCommunities.map((community) => {
                   const isPending =
@@ -2176,7 +2174,7 @@ export function CommunityRemoteApp({
                     <li
                       key={community.id}
                       onClick={() => void handleOpenCommunityHub(community)}
-                      className="flex cursor-pointer items-center gap-3.5 rounded-xl border border-slate-200/90 bg-white px-4 py-3.5 shadow-sm transition-colors hover:border-primary-200 hover:bg-slate-50 sm:px-5"
+                      className="flex cursor-pointer items-center gap-3.5 border-y border-slate-200/90 bg-white px-4 py-3.5 shadow-sm transition-colors hover:border-primary-200 hover:bg-slate-50 sm:px-5"
                     >
                       <Avatar
                         alt={community.name}

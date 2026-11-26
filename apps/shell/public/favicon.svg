@@ -1,6 +1,24 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
-  <rect width="64" height="64" rx="14" fill="#0F172A" />
-  <circle cx="32" cy="32" r="18" stroke="#38BDF8" stroke-width="4" />
-  <circle cx="32" cy="32" r="5" fill="#F8FAFC" />
-  <path d="M32 14V27M32 37V50M14 32H27M37 32H50" stroke="#38BDF8" stroke-width="3" stroke-linecap="round" />
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-labelledby="title">
+  <title id="title">RidersClub wheel</title>
+  <defs>
+    <linearGradient id="wheel" x1="10" y1="8" x2="54" y2="58" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFB703"/>
+      <stop offset="1" stop-color="#F97316"/>
+    </linearGradient>
+  </defs>
+  <rect x="2" y="2" width="60" height="60" rx="16" fill="#101820"/>
+  <circle cx="32" cy="32" r="23" fill="url(#wheel)"/>
+  <circle cx="32" cy="32" r="17.5" fill="#101820"/>
+  <circle cx="32" cy="32" r="7" fill="#FFB703"/>
+  <g fill="none" stroke="#FFF7ED" stroke-width="2.4" stroke-linecap="round">
+    <path d="M32 25V9"/>
+    <path d="M32 55V39"/>
+    <path d="M25 32H9"/>
+    <path d="M55 32H39"/>
+    <path d="M27.1 27.1L15.8 15.8"/>
+    <path d="M48.2 48.2L36.9 36.9"/>
+    <path d="M36.9 27.1L48.2 15.8"/>
+    <path d="M15.8 48.2L27.1 36.9"/>
+  </g>
+  <circle cx="32" cy="32" r="4" fill="#101820"/>
 </svg>

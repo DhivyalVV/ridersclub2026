@@ -12,6 +12,7 @@ export default defineConfig(({ mode }) => {
     mechanics: env.VITE_MECHANICS_REMOTE_URL || 'http://localhost:5004/remoteEntry.js',
     garage: env.VITE_GARAGE_REMOTE_URL || 'http://localhost:5005/remoteEntry.js',
     marketplace: env.VITE_MARKETPLACE_REMOTE_URL || 'http://localhost:5006/remoteEntry.js',
+    news: env.VITE_NEWS_REMOTE_URL || 'http://localhost:5007/remoteEntry.js',
   };
 
   return {
@@ -89,6 +90,13 @@ export default defineConfig(({ mode }) => {
             name: 'marketplace',
             entry: remotesConfig.marketplace,
             entryGlobalName: 'marketplace',
+            shareScope: 'default',
+          },
+          news: {
+            type: 'module',
+            name: 'news',
+            entry: remotesConfig.news,
+            entryGlobalName: 'news',
             shareScope: 'default',
           },
         },

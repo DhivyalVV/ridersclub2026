@@ -34,6 +34,17 @@
   }
 }
 
+/* Dense 3-spoke steering wheel pattern + cobalt-blue ambient gradient */
+.bg-background {
+  background-color: hsl(var(--background));
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='36' height='62' viewBox='0 0 36 62'%3E%3Cg fill='none'%3E%3Ccircle cx='18' cy='15.5' r='12' stroke='rgba(30,58,138,0.24)' stroke-width='2.4'/%3E%3Cpath d='M6.8 14.3L15 15.5M21 15.5L29.2 14.3M18 18.5V26.7' stroke='rgba(30,64,175,0.24)' stroke-width='2.1' stroke-linecap='round'/%3E%3Ccircle cx='18' cy='15.5' r='3.6' fill='rgba(29,78,216,0.26)'/%3E%3Ccircle cx='0' cy='46.5' r='12' stroke='rgba(30,58,138,0.24)' stroke-width='2.4'/%3E%3Cpath d='M-11.2 45.3L-3 46.5M3 46.5L11.2 45.3M0 49.5V57.7' stroke='rgba(30,64,175,0.24)' stroke-width='2.1' stroke-linecap='round'/%3E%3Ccircle cx='0' cy='46.5' r='3.6' fill='rgba(29,78,216,0.26)'/%3E%3Ccircle cx='36' cy='46.5' r='12' stroke='rgba(30,58,138,0.24)' stroke-width='2.4'/%3E%3Cpath d='M24.8 45.3L33 46.5M39 46.5L47.2 45.3M36 49.5V57.7' stroke='rgba(30,64,175,0.24)' stroke-width='2.1' stroke-linecap='round'/%3E%3Ccircle cx='36' cy='46.5' r='3.6' fill='rgba(29,78,216,0.26)'/%3E%3C/g%3E%3C/svg%3E"),
+    radial-gradient(ellipse 85% 60% at 90% 5%, rgba(37, 99, 235, 0.34), transparent 68%),
+    radial-gradient(ellipse 75% 55% at 8% 95%, rgba(30, 58, 138, 0.28), transparent 68%),
+    linear-gradient(145deg, rgba(255, 255, 255, 0.25) 0%, rgba(191, 219, 254, 0.42) 50%, rgba(147, 197, 253, 0.48) 100%);
+  background-size: 36px 62px, 100% 100%, 100% 100%, 100% 100%;
+}
+
 /* Federated remote banner gradients (shared single stylesheet via Shell host) */
 .from-primary-900.via-primary-800.to-primary-700 {
   background-image: linear-gradient(to right, #1e3a8a, #1e40af, #1d4ed8);
