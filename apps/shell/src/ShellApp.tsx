@@ -1351,10 +1351,10 @@ export function ShellApp({
               </div>
             </div>
           ) : (
-            <div className="mx-auto flex min-h-0 w-full max-w-5xl flex-1 flex-col bg-white shadow-sm sm:my-4 sm:rounded-2xl sm:border sm:border-slate-200">
+            <div className="mx-auto flex min-h-0 w-full max-w-5xl flex-1 flex-col overflow-hidden bg-white shadow-sm sm:my-4 sm:rounded-2xl sm:border sm:border-slate-200">
               <div
                 ref={directMessagesContainerRef}
-                className="flex-1 space-y-3 overflow-y-auto p-4 sm:p-6"
+                className="bg-mountain-chat flex-1 space-y-3 overflow-y-auto p-4 sm:p-6"
               >
                 {activeConversation.messages.length === 0 ? (
                   <EmptyState
@@ -1370,15 +1370,15 @@ export function ShellApp({
                         className={`flex flex-col ${isMe ? 'items-end' : 'items-start'}`}
                       >
                         <div
-                          className={`max-w-[80%] rounded-2xl px-4 py-2.5 text-sm ${
+                          className={`max-w-[80%] rounded-2xl px-4 py-2.5 text-sm shadow-sm ${
                             isMe
                               ? 'bg-primary-600 text-white'
-                              : 'bg-slate-100 text-slate-900'
+                              : 'border border-slate-200/80 bg-white/95 text-slate-900'
                           }`}
                         >
                           {msg.body}
                         </div>
-                        <span className="mt-1 text-[10px] text-slate-400">
+                        <span className="mt-1 rounded bg-white/75 px-1.5 py-0.5 text-[10px] text-slate-500">
                           {msg.sentAtLabel}
                         </span>
                       </div>

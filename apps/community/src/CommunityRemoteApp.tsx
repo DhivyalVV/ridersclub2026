@@ -1946,7 +1946,7 @@ export function CommunityRemoteApp({
               </div>
             ) : (
               /* Full-Screen Community Chat Body (matching 1:1 Direct Chat conversation view) */
-              <div className="mx-auto flex min-h-0 w-full max-w-5xl flex-1 flex-col bg-white shadow-sm sm:my-4 sm:rounded-2xl sm:border sm:border-slate-200">
+              <div className="mx-auto flex min-h-0 w-full max-w-5xl flex-1 flex-col overflow-hidden bg-white shadow-sm sm:my-4 sm:rounded-2xl sm:border sm:border-slate-200">
                 {chatAccessError ? (
                   <div className="flex-1 p-4 sm:p-6">
                     <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
@@ -1962,12 +1962,14 @@ export function CommunityRemoteApp({
                   <>
                     <div
                       ref={communityMessagesContainerRef}
-                      className="flex-1 space-y-3 overflow-y-auto p-4 sm:p-6"
+                      className="bg-road-chat flex-1 space-y-3 overflow-y-auto p-4 sm:p-6"
                     >
                       {communityMessages.length === 0 ? (
-                        <p className="py-8 text-center text-xs text-slate-500">
-                          No messages yet. Start the conversation below!
-                        </p>
+                        <div className="flex justify-center py-8">
+                          <p className="rounded-xl border border-slate-200/80 bg-white/90 px-4 py-2 text-center text-xs font-medium text-slate-600 shadow-sm backdrop-blur-sm">
+                            No messages yet. Start the conversation below!
+                          </p>
+                        </div>
                       ) : (
                         communityMessages.map((msg) => {
                           const isMe = Boolean(currentUser && msg.sender.id === currentUser.id);
@@ -1977,10 +1979,10 @@ export function CommunityRemoteApp({
                               className={`flex flex-col ${isMe ? 'items-end' : 'items-start'}`}
                             >
                               <div
-                                className={`max-w-[80%] rounded-2xl px-4 py-2.5 text-sm ${
+                                className={`max-w-[80%] rounded-2xl px-4 py-2.5 text-sm shadow-sm ${
                                   isMe
                                     ? 'bg-primary-600 text-white'
-                                    : 'bg-slate-100 text-slate-900'
+                                    : 'border border-slate-200/80 bg-white/95 text-slate-900'
                                 }`}
                               >
                                 <button
