@@ -388,7 +388,7 @@ export function AdminModerationView({
               <div
                 role="dialog"
                 aria-label="Page information"
-                className="absolute right-0 top-full z-50 mt-1.5 w-72 rounded-xl border border-yellow-200 bg-yellow-50 p-3.5 text-xs leading-relaxed text-yellow-950 shadow-lg sm:w-80"
+                className="absolute right-0 top-full z-50 mt-1.5 w-72 rounded-xl border border-primary-200 bg-primary-50 p-3.5 text-xs leading-relaxed text-primary-950 shadow-lg sm:w-80"
               >
                 <p>
                   Review flagged marketplace listings, mechanic verifications, and community content with immutable audit logging and WCAG AA accessibility safeguards.
@@ -441,7 +441,7 @@ export function AdminModerationView({
 
       {/* File Safety Report Composer */}
       {showReportComposer && (
-        <Card className="border-primary-200 bg-primary-50/40">
+        <Card className="border-primary-200 bg-primary-50">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base">
               <Flag className="h-4 w-4 text-primary-600" aria-hidden="true" />
@@ -561,12 +561,12 @@ export function AdminModerationView({
             </p>
           </CardContent>
         </Card>
-        <Card className="border-yellow-200 bg-yellow-50/40">
+        <Card className="border-amber-200 bg-amber-50">
           <CardContent className="p-4">
-            <p className="text-xs font-semibold text-yellow-800">Open Reports</p>
+            <p className="text-xs font-semibold text-amber-800">Open Reports</p>
             <p
               data-testid="open-reports-count"
-              className="mt-1 text-2xl font-bold text-yellow-900"
+              className="mt-1 text-2xl font-bold text-amber-900"
             >
               {overview.openReportsCount}
             </p>

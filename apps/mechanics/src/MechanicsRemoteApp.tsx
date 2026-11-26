@@ -357,7 +357,7 @@ export function MechanicsRemoteApp(): React.JSX.Element {
               <div
                 role="dialog"
                 aria-label="Page information"
-                className="absolute right-0 top-full z-50 mt-1.5 w-72 rounded-xl border border-yellow-200 bg-yellow-50 p-3.5 text-xs leading-relaxed text-yellow-950 shadow-lg sm:w-80"
+                className="absolute right-0 top-full z-50 mt-1.5 w-72 rounded-xl border border-primary-200 bg-primary-50 p-3.5 text-xs leading-relaxed text-primary-950 shadow-lg sm:w-80"
               >
                 <p>
                   Search independent workshops and specialists by location and
@@ -374,7 +374,7 @@ export function MechanicsRemoteApp(): React.JSX.Element {
           </h1>
           <Button
             variant="secondary"
-            className="bg-yellow-100 text-yellow-950 hover:bg-yellow-200"
+            className="bg-white text-primary-900 hover:bg-primary-50"
             onClick={() => setShowRegisterForm((prev) => !prev)}
           >
             <Plus className="h-4 w-4" aria-hidden="true" />
@@ -401,7 +401,7 @@ export function MechanicsRemoteApp(): React.JSX.Element {
 
       {/* Self-Registration Composer */}
       {showRegisterForm && (
-        <Card className="border-primary-200 bg-primary-50/30 shadow-sm">
+        <Card className="border-primary-200 bg-primary-50 shadow-sm">
           <CardHeader>
             <CardTitle className="text-lg">
               Register Independent Workshop or Service Center

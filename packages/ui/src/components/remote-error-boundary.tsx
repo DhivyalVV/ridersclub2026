@@ -41,10 +41,10 @@ export class RemoteErrorBoundary extends React.Component<
       return (
         <div
           role="alert"
-          className="rounded-xl border border-yellow-200 bg-yellow-50/80 p-6 text-slate-900 shadow-sm"
+          className="rounded-xl border border-amber-200 bg-amber-50 p-6 text-slate-900 shadow-sm"
         >
           <div className="flex items-start gap-4">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-yellow-100 text-yellow-700">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-amber-100 text-amber-700">
               <AlertTriangle className="h-5 w-5" aria-hidden="true" />
             </div>
             <div className="flex-1">
@@ -61,7 +61,7 @@ export class RemoteErrorBoundary extends React.Component<
                 </p>
               )}
               {this.state.errorMessage && (
-                <p className="mt-1 font-mono text-xs text-yellow-900">
+                <p className="mt-1 font-mono text-xs text-amber-900">
                   Reason: {this.state.errorMessage}
                 </p>
               )}

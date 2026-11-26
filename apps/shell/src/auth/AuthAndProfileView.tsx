@@ -632,7 +632,7 @@ export function AuthAndProfileView({
                   <div
                     role="dialog"
                     aria-label="Page information"
-                    className="absolute right-0 top-full z-50 mt-1.5 w-72 rounded-xl border border-yellow-200 bg-yellow-50 p-3.5 text-xs leading-relaxed text-yellow-950 shadow-lg sm:w-80"
+                    className="absolute right-0 top-full z-50 mt-1.5 w-72 rounded-xl border border-primary-200 bg-primary-50 p-3.5 text-xs leading-relaxed text-primary-950 shadow-lg sm:w-80"
                   >
                     <p>
                       Update how your profile appears across News, Communities, Rides, Help,
@@ -655,7 +655,7 @@ export function AuthAndProfileView({
               <Button
                 variant="secondary"
                 size="sm"
-                className="bg-yellow-100 text-yellow-950 hover:bg-yellow-200"
+                className="bg-white text-primary-900 hover:bg-primary-50"
                 onClick={onSignOut}
               >
                 <LogOut className="h-3.5 w-3.5" aria-hidden="true" />
@@ -841,7 +841,7 @@ export function AuthAndProfileView({
                   </Button>
                   {linkOtpPreview && (
                     <form onSubmit={handleVerifyLinkPhone} className="space-y-2 pt-2">
-                      <p className="text-[11px] font-semibold text-yellow-800">
+                      <p className="text-[11px] font-semibold text-amber-800">
                         Dev OTP: {linkOtpPreview}
                       </p>
                       <input

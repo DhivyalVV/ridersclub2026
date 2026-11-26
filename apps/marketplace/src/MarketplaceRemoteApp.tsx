@@ -404,14 +404,14 @@ export function MarketplaceRemoteApp(): React.JSX.Element {
               <div
                 role="dialog"
                 aria-label="Page information"
-                className="absolute right-0 top-full z-50 mt-1.5 w-72 space-y-2 rounded-xl border border-yellow-200 bg-yellow-50 p-3.5 text-xs leading-relaxed text-yellow-950 shadow-lg sm:w-80"
+                className="absolute right-0 top-full z-50 mt-1.5 w-72 space-y-2 rounded-xl border border-primary-200 bg-primary-50 p-3.5 text-xs leading-relaxed text-primary-950 shadow-lg sm:w-80"
               >
                 <p>
                   Browse enthusiast-owned motorcycles and cars and contact sellers
                   directly through 1:1 chat. All vehicle descriptions and prices are
                   seller-provided claims.
                 </p>
-                <p className="text-yellow-900">
+                <p className="text-primary-900">
                   <strong>Buyer Advisory:</strong> Listings reflect seller-provided
                   claims and are not automatically inspected or verified by
                   RidersClub. Always perform an independent mechanical inspection and
@@ -428,7 +428,7 @@ export function MarketplaceRemoteApp(): React.JSX.Element {
           </h1>
           <Button
             variant="secondary"
-            className="bg-yellow-100 text-yellow-950 hover:bg-yellow-200"
+            className="bg-white text-primary-900 hover:bg-primary-50"
             onClick={() => setShowCreateForm((prev) => !prev)}
           >
             <Plus className="h-4 w-4" aria-hidden="true" />
@@ -471,7 +471,7 @@ export function MarketplaceRemoteApp(): React.JSX.Element {
 
       {/* Create Listing Composer */}
       {showCreateForm && (
-        <Card className="border-primary-200 bg-primary-50/30 shadow-sm">
+        <Card className="border-primary-200 bg-primary-50 shadow-sm">
           <CardHeader>
             <CardTitle className="text-lg">
               Publish Secondhand Vehicle Listing
@@ -776,7 +776,7 @@ export function MarketplaceRemoteApp(): React.JSX.Element {
                     />
                     {listing.location}
                   </span>
-                  <span className="text-[11px] font-medium text-yellow-800">
+                  <span className="text-[11px] font-medium text-amber-800">
                     Unverified Seller Claim
                   </span>
                 </div>
