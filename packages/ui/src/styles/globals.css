@@ -34,6 +34,35 @@
   }
 }
 
+/* Dense 3-spoke steering wheel pattern + cobalt-blue ambient gradient */
+.bg-background {
+  background-color: hsl(var(--background));
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='36' height='62' viewBox='0 0 36 62'%3E%3Cg fill='none'%3E%3Ccircle cx='18' cy='15.5' r='12' stroke='rgba(30,58,138,0.24)' stroke-width='2.4'/%3E%3Cpath d='M6.8 14.3L15 15.5M21 15.5L29.2 14.3M18 18.5V26.7' stroke='rgba(30,64,175,0.24)' stroke-width='2.1' stroke-linecap='round'/%3E%3Ccircle cx='18' cy='15.5' r='3.6' fill='rgba(29,78,216,0.26)'/%3E%3Ccircle cx='0' cy='46.5' r='12' stroke='rgba(30,58,138,0.24)' stroke-width='2.4'/%3E%3Cpath d='M-11.2 45.3L-3 46.5M3 46.5L11.2 45.3M0 49.5V57.7' stroke='rgba(30,64,175,0.24)' stroke-width='2.1' stroke-linecap='round'/%3E%3Ccircle cx='0' cy='46.5' r='3.6' fill='rgba(29,78,216,0.26)'/%3E%3Ccircle cx='36' cy='46.5' r='12' stroke='rgba(30,58,138,0.24)' stroke-width='2.4'/%3E%3Cpath d='M24.8 45.3L33 46.5M39 46.5L47.2 45.3M36 49.5V57.7' stroke='rgba(30,64,175,0.24)' stroke-width='2.1' stroke-linecap='round'/%3E%3Ccircle cx='36' cy='46.5' r='3.6' fill='rgba(29,78,216,0.26)'/%3E%3C/g%3E%3C/svg%3E"),
+    radial-gradient(ellipse 85% 60% at 90% 5%, rgba(37, 99, 235, 0.34), transparent 68%),
+    radial-gradient(ellipse 75% 55% at 8% 95%, rgba(30, 58, 138, 0.28), transparent 68%),
+    linear-gradient(145deg, rgba(255, 255, 255, 0.25) 0%, rgba(191, 219, 254, 0.42) 50%, rgba(147, 197, 253, 0.48) 100%);
+  background-size: 36px 62px, 100% 100%, 100% 100%, 100% 100%;
+}
+
+/* Serpentine snake road (smooth sweeping curves left-to-right, U-turn, right-to-left, repeating) */
+.bg-road-chat {
+  background-color: #f4f7fb;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='800' height='240' viewBox='0 0 800 240' preserveAspectRatio='none'%3E%3Cg fill='none'%3E%3Cpath d='M64 0C64 36 94 60 140 60C200 60 250 36 310 36C370 36 430 84 490 84C550 84 600 60 660 60C706 60 736 86 736 120C736 154 706 180 660 180C600 180 550 204 490 204C430 204 370 156 310 156C250 156 200 180 140 180C94 180 64 204 64 240' stroke='rgba(30,58,138,0.22)' stroke-width='36' vector-effect='non-scaling-stroke'/%3E%3Cpath d='M64 0C64 36 94 60 140 60C200 60 250 36 310 36C370 36 430 84 490 84C550 84 600 60 660 60C706 60 736 86 736 120C736 154 706 180 660 180C600 180 550 204 490 204C430 204 370 156 310 156C250 156 200 180 140 180C94 180 64 204 64 240' stroke='%23e8eef6' stroke-width='32' vector-effect='non-scaling-stroke'/%3E%3Cpath d='M64 0C64 36 94 60 140 60C200 60 250 36 310 36C370 36 430 84 490 84C550 84 600 60 660 60C706 60 736 86 736 120C736 154 706 180 660 180C600 180 550 204 490 204C430 204 370 156 310 156C250 156 200 180 140 180C94 180 64 204 64 240' stroke='rgba(30,64,175,0.28)' stroke-width='2' stroke-dasharray='10 8' stroke-linecap='round' vector-effect='non-scaling-stroke'/%3E%3C/g%3E%3C/svg%3E");
+  background-repeat: repeat-y;
+  background-position: center top;
+  background-size: 100% 240px;
+}
+
+/* Mountains & pine trees pattern for 1:1 Private Direct Chat */
+.bg-mountain-chat {
+  background-color: #f4f7fb;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='180' viewBox='0 0 240 180'%3E%3Cg fill='none'%3E%3Cpath d='M0 96L48 48L88 78L144 30L198 76L240 96V180H0Z' fill='rgba(30,58,138,0.045)'/%3E%3Cpath d='M0 96L48 48L88 78L144 30L198 76L240 96' stroke='rgba(30,58,138,0.18)' stroke-width='1.8' stroke-linejoin='round'/%3E%3Cpath d='M131 41L144 30L157 41L149 44L144 39L139 44Z' fill='rgba(255,255,255,0.75)' stroke='rgba(30,58,138,0.16)' stroke-width='1.2' stroke-linejoin='round'/%3E%3Cpath d='M0 144Q60 122 120 140T240 144' stroke='rgba(30,58,138,0.14)' stroke-width='1.5'/%3E%3Cg fill='rgba(30,64,175,0.14)' stroke='rgba(30,58,138,0.2)' stroke-width='1.3' stroke-linejoin='round'%3E%3Cpolygon points='34,116 24,136 44,136'/%3E%3Cpolygon points='34,126 22,146 46,146'/%3E%3Cline x1='34' y1='146' x2='34' y2='154' stroke-linecap='round'/%3E%3Cpolygon points='54,126 46,142 62,142'/%3E%3Cpolygon points='54,134 44,151 64,151'/%3E%3Cline x1='54' y1='151' x2='54' y2='157' stroke-linecap='round'/%3E%3Cpolygon points='172,112 161,134 183,134'/%3E%3Cpolygon points='172,123 159,146 185,146'/%3E%3Cline x1='172' y1='146' x2='172' y2='155' stroke-linecap='round'/%3E%3Cpolygon points='194,124 185,141 203,141'/%3E%3Cpolygon points='194,133 183,150 205,150'/%3E%3Cline x1='194' y1='150' x2='194' y2='157' stroke-linecap='round'/%3E%3Cpolygon points='106,84 99,98 113,98'/%3E%3Cline x1='106' y1='98' x2='106' y2='103' stroke-linecap='round'/%3E%3Cpolygon points='220,90 214,103 226,103'/%3E%3Cline x1='220' y1='103' x2='220' y2='108' stroke-linecap='round'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+  background-repeat: repeat;
+  background-position: center top;
+  background-size: 240px 180px;
+}
+
 /* Federated remote banner gradients (shared single stylesheet via Shell host) */
 .from-primary-900.via-primary-800.to-primary-700 {
   background-image: linear-gradient(to right, #1e3a8a, #1e40af, #1d4ed8);

@@ -1,10 +1,10 @@
 {
   "latestErrorEvent": {
     "code": "TYPE-001",
-    "message": "Failed to generate type declaration. Execute the below cmd to reproduce and fix the error. #TYPE-001\nargs: {\"cmd\":\"C:\\\\Users\\\\dhivy\\\\AppData\\\\Roaming\\\\fnm\\\\aliases\\\\default\\\\node.exe D:\\\\Projects\\\\Worldonwheels\\\\2026\\\\ridersclub\\\\node_modules\\\\.pnpm\\\\typescript@5.9.3\\\\node_modules\\\\typescript\\\\bin\\\\tsc --project D:\\\\Projects\\\\Worldonwheels\\\\2026\\\\ridersclub\\\\apps\\\\community\\\\node_modules\\\\.federation\\\\tsconfig.d432e5c5baf2b66bcd781d401d743ead.json\"}\nView the docs to see how to solve: https://module-federation.io/guide/troubleshooting/type#type-001",
+    "message": "Failed to generate type declaration. Execute the below cmd to reproduce and fix the error. #TYPE-001\nargs: {\"cmd\":\"C:\\\\Users\\\\dhivy\\\\AppData\\\\Roaming\\\\fnm\\\\aliases\\\\default\\\\node.exe D:\\\\Projects\\\\Worldonwheels\\\\2026\\\\ridersclub\\\\node_modules\\\\.pnpm\\\\typescript@5.9.3\\\\node_modules\\\\typescript\\\\bin\\\\tsc --project D:\\\\Projects\\\\Worldonwheels\\\\2026\\\\ridersclub\\\\apps\\\\community\\\\node_modules\\\\.federation\\\\tsconfig.2616cf86448a01cb61c7709bf5035dc2.json\"}\nView the docs to see how to solve: https://module-federation.io/guide/troubleshooting/type#type-001",
     "args": {
-      "cmd": "C:\\Users\\dhivy\\AppData\\Roaming\\fnm\\aliases\\default\\node.exe D:\\Projects\\Worldonwheels\\2026\\ridersclub\\node_modules\\.pnpm\\typescript@5.9.3\\node_modules\\typescript\\bin\\tsc --project D:\\Projects\\Worldonwheels\\2026\\ridersclub\\apps\\community\\node_modules\\.federation\\tsconfig.d432e5c5baf2b66bcd781d401d743ead.json"
+      "cmd": "C:\\Users\\dhivy\\AppData\\Roaming\\fnm\\aliases\\default\\node.exe D:\\Projects\\Worldonwheels\\2026\\ridersclub\\node_modules\\.pnpm\\typescript@5.9.3\\node_modules\\typescript\\bin\\tsc --project D:\\Projects\\Worldonwheels\\2026\\ridersclub\\apps\\community\\node_modules\\.federation\\tsconfig.2616cf86448a01cb61c7709bf5035dc2.json"
     },
-    "timestamp": 1795716576692
+    "timestamp": 1795731940096
   }
 }

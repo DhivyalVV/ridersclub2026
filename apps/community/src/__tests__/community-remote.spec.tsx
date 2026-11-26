@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
-import { RIDERSCLUB_OPEN_CHAT_EVENT } from '@ridersclub/ui';
+import { RIDERSCLUB_OPEN_CHAT_EVENT, RIDERSCLUB_VIEW_PROFILE_EVENT } from '@ridersclub/ui';
 import { CommunityRemoteApp } from '../CommunityRemoteApp.js';
 
 afterEach(() => {
@@ -117,6 +117,15 @@ describe('CommunityRemoteApp federated remote (Phase 6 Communities, Chat & News)
     expect(
       screen.getByText('Checking in with my Himalayan 450 for the Sunday trail run!'),
     ).toBeTruthy();
+
+    // Clicking a sender's display name in chat opens their profile modal without rendering an avatar image
+    const profileHandler = vi.fn();
+    window.addEventListener(RIDERSCLUB_VIEW_PROFILE_EVENT, profileHandler);
+    const senderButton = screen.getAllByRole('button', { name: /View profile of /i })[0];
+    expect(senderButton.parentElement?.querySelector('img')).toBeNull();
+    fireEvent.click(senderButton);
+    expect(profileHandler).toHaveBeenCalledTimes(1);
+    window.removeEventListener(RIDERSCLUB_VIEW_PROFILE_EVENT, profileHandler);
 
     // Click Back button to come back to the group list
     fireEvent.click(screen.getByRole('button', { name: /Back to communities list/i }));

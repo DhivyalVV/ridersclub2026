@@ -15,6 +15,7 @@ export default defineConfig({
       'mechanics/App': path.resolve(__dirname, '../mechanics/src/MechanicsRemoteApp.tsx'),
       'garage/App': path.resolve(__dirname, '../garage/src/GarageRemoteApp.tsx'),
       'marketplace/App': path.resolve(__dirname, '../marketplace/src/MarketplaceRemoteApp.tsx'),
+      'news/App': path.resolve(__dirname, '../news/src/NewsRemoteApp.tsx'),
     },
   },
   test: {

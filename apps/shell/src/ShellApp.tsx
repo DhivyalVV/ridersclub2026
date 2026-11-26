@@ -65,6 +65,7 @@ const FederatedHelpRemote = React.lazy(() => import('help/App'));
 const FederatedMechanicsRemote = React.lazy(() => import('mechanics/App'));
 const FederatedGarageRemote = React.lazy(() => import('garage/App'));
 const FederatedMarketplaceRemote = React.lazy(() => import('marketplace/App'));
+const FederatedNewsRemote = React.lazy(() => import('news/App'));
 
 const ACCESS_TOKEN_STORAGE_KEY = 'ridersclub:access_token';
 const AUTH_USER_STORAGE_KEY = 'ridersclub:auth_user';
@@ -125,6 +126,7 @@ function mapApiConversationToThread(item: DirectConversationItem): DirectConvers
 
 export interface RemoteComponentOverrides {
   Community?: React.ComponentType<{ initialSection?: 'communities' | 'news' }>;
+  News?: React.ComponentType;
   Rides?: React.ComponentType;
   Help?: React.ComponentType;
   Mechanics?: React.ComponentType;
@@ -723,6 +725,7 @@ export function ShellApp({
 
   const CommunityComponent =
     remoteOverrides?.Community ?? CommunityComponentOverride ?? FederatedCommunityRemote;
+  const NewsComponent = remoteOverrides?.News ?? FederatedNewsRemote;
   const RidesComponent = remoteOverrides?.Rides ?? FederatedRidesRemote;
   const HelpComponent = remoteOverrides?.Help ?? FederatedHelpRemote;
   const MechanicsComponent = remoteOverrides?.Mechanics ?? FederatedMechanicsRemote;
@@ -927,7 +930,7 @@ export function ShellApp({
         ) : null}
 
         {/* Active Route Viewport */}
-        <main id="main-content" key={accessToken ?? "guest"} tabIndex={-1} className="min-w-0 flex-1 focus:outline-none">
+        <main id="main-content" key={accessToken ?? "guest"} tabIndex={-1} className="flex min-w-0 flex-1 flex-col focus:outline-none">
           {!authenticatedUser ? (
             <div className="space-y-6">
               <div className="relative rounded-2xl bg-gradient-to-r from-primary-950 via-primary-900 to-primary-700 px-5 py-4 pr-12 text-white shadow-md sm:px-6 sm:pr-14">
@@ -1004,8 +1007,8 @@ export function ShellApp({
                 path="/news/*"
                 element={renderFederatedModule(
                   'News',
-                  'http://localhost:5001/remoteEntry.js',
-                  <CommunityComponent initialSection="news" />,
+                  'http://localhost:5007/remoteEntry.js',
+                  <NewsComponent />,
                 )}
               />
               <Route
@@ -1348,10 +1351,10 @@ export function ShellApp({
               </div>
             </div>
           ) : (
-            <div className="mx-auto flex min-h-0 w-full max-w-5xl flex-1 flex-col bg-white shadow-sm sm:my-4 sm:rounded-2xl sm:border sm:border-slate-200">
+            <div className="mx-auto flex min-h-0 w-full max-w-5xl flex-1 flex-col overflow-hidden bg-white shadow-sm sm:my-4 sm:rounded-2xl sm:border sm:border-slate-200">
               <div
                 ref={directMessagesContainerRef}
-                className="flex-1 space-y-3 overflow-y-auto p-4 sm:p-6"
+                className="bg-mountain-chat flex-1 space-y-3 overflow-y-auto p-4 sm:p-6"
               >
                 {activeConversation.messages.length === 0 ? (
                   <EmptyState
@@ -1367,15 +1370,15 @@ export function ShellApp({
                         className={`flex flex-col ${isMe ? 'items-end' : 'items-start'}`}
                       >
                         <div
-                          className={`max-w-[80%] rounded-2xl px-4 py-2.5 text-sm ${
+                          className={`max-w-[80%] rounded-2xl px-4 py-2.5 text-sm shadow-sm ${
                             isMe
                               ? 'bg-primary-600 text-white'
-                              : 'bg-slate-100 text-slate-900'
+                              : 'border border-slate-200/80 bg-white/95 text-slate-900'
                           }`}
                         >
                           {msg.body}
                         </div>
-                        <span className="mt-1 text-[10px] text-slate-400">
+                        <span className="mt-1 rounded bg-white/75 px-1.5 py-0.5 text-[10px] text-slate-500">
                           {msg.sentAtLabel}
                         </span>
                       </div>
