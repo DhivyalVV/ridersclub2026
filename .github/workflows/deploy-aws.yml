@@ -67,7 +67,7 @@ jobs:
             -t "$ECR_REGISTRY/ridersclub-${{ inputs.environment }}-api:$IMAGE_TAG" .
           docker push "$ECR_REGISTRY/ridersclub-${{ inputs.environment }}-api:$IMAGE_TAG"
 
-      - name: Sync Shell & 6 Federated Remotes to S3 with Immutable Asset Caching
+      - name: Sync Shell & 7 Federated Remotes to S3 with Immutable Asset Caching
         env:
           MFE_BUCKET: ${{ secrets.AWS_MFE_S3_BUCKET }}
         run: |
@@ -78,8 +78,8 @@ jobs:
           aws s3 cp apps/shell/dist/index.html "s3://$MFE_BUCKET/index.html" \
             --cache-control "no-cache,no-store,must-revalidate"
 
-          # Sync each of the 6 Federated Remotes with zero-cache remoteEntry.js
-          for remote in community rides help mechanics garage marketplace; do
+          # Sync each of the 7 Federated Remotes with zero-cache remoteEntry.js
+          for remote in community rides help mechanics garage marketplace news; do
             aws s3 sync "apps/$remote/dist" "s3://$MFE_BUCKET/remotes/$remote/" \
               --exclude "remoteEntry.js" \
               --cache-control "public,max-age=31536000,immutable"

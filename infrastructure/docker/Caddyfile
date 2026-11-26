@@ -22,6 +22,9 @@ ridersclub.in, www.ridersclub.in {
     handle_path /mfe/marketplace/* {
         reverse_proxy localhost:5006
     }
+    handle_path /mfe/news/* {
+        reverse_proxy localhost:5007
+    }
     handle /api/* {
         reverse_proxy localhost:4000
     }
@@ -48,6 +51,9 @@ staging.ridersclub.in {
     }
     handle_path /mfe/marketplace/* {
         reverse_proxy localhost:5106
+    }
+    handle_path /mfe/news/* {
+        reverse_proxy localhost:5107
     }
     handle /api/* {
         reverse_proxy localhost:4100
