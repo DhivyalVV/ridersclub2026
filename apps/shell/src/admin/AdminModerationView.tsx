@@ -477,7 +477,7 @@ export function AdminModerationView({
                   >
                     <option value={ModerationTargetType.LISTING}>Marketplace Listing</option>
                     <option value={ModerationTargetType.MECHANIC}>Mechanic Provider</option>
-                    <option value={ModerationTargetType.BLOG}>Rider Blog Post</option>
+                    <option value={ModerationTargetType.BLOG}>News Article</option>
                     <option value={ModerationTargetType.COMMUNITY}>Community Post</option>
                     <option value={ModerationTargetType.HELP_REQUEST}>Roadside Help Request</option>
                     <option value={ModerationTargetType.USER}>User Account</option>
@@ -669,8 +669,7 @@ export function AdminModerationView({
                   </h3>
                   <p className="text-xs text-slate-600">{report.reason}</p>
                   <p className="text-[11px] text-slate-400">
-                    Reported by {report.reporter.displayName} (@
-                    {report.reporter.username})
+                    Reported by {report.reporter.displayName}
                     {report.resolutionNotes
                       ? ` • Resolution: ${report.resolutionNotes}`
                       : ''}
@@ -734,7 +733,7 @@ export function AdminModerationView({
                     </Badge>
                   </div>
                   <span className="text-[11px] text-slate-500">
-                    Actor: {log.actor.displayName} (@{log.actor.username})
+                    Actor: {log.actor.displayName}
                   </span>
                 </div>
                 <p className="mt-2 text-slate-700">{log.reason}</p>

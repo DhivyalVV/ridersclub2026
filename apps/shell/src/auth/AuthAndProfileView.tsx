@@ -2,13 +2,13 @@ import * as React from 'react';
 import {
   CheckCircle2,
   Info,
-  KeyRound,
   Link2,
+  LogIn,
   LogOut,
-  Phone,
   Save,
   Shield,
   UserCheck,
+  UserPlus,
 } from 'lucide-react';
 import {
   DirectMessagePrivacy,
@@ -43,11 +43,15 @@ export function AuthAndProfileView({
   onUserUpdated,
   onSignOut,
 }: AuthAndProfileViewProps): React.JSX.Element {
-  // Phone OTP Sign-In State
-  const [phoneInput, setPhoneInput] = React.useState('');
-  const [otpInput, setOtpInput] = React.useState('');
-  const [displayNameInput, setDisplayNameInput] = React.useState('');
-  const [otpRequested, setOtpRequested] = React.useState<OtpRequestResponse | null>(null);
+  // Username & Password Sign-In / Sign-Up State
+  const [authMode, setAuthMode] = React.useState<'signin' | 'signup'>('signin');
+  const [signInIdentifier, setSignInIdentifier] = React.useState('');
+  const [signInPassword, setSignInPassword] = React.useState('');
+
+  const [signUpUsername, setSignUpUsername] = React.useState('');
+  const [signUpDisplayName, setSignUpDisplayName] = React.useState('');
+  const [signUpEmail, setSignUpEmail] = React.useState('');
+  const [signUpPassword, setSignUpPassword] = React.useState('');
 
   // Profile Editor State
   const [editDisplayName, setEditDisplayName] = React.useState('');
@@ -103,70 +107,79 @@ export function AuthAndProfileView({
     document.head.appendChild(script);
   }, [googleClientId, currentUser]);
 
-  async function handleRequestOtp(e: React.FormEvent): Promise<void> {
+  async function handlePasswordSignIn(e: React.FormEvent): Promise<void> {
     e.preventDefault();
     setErrorMessage(null);
     setStatusMessage(null);
     setIsSubmitting(true);
 
     try {
-      const res = await fetch(`${apiBaseUrl}/auth/otp/request`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phoneNumber: phoneInput }),
-      });
-
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(
-          Array.isArray(data.message) ? data.message.join(', ') : data.message || 'OTP request failed',
-        );
-      }
-
-      const otpRes = data as OtpRequestResponse;
-      setOtpRequested(otpRes);
-      if (otpRes.devOtpPreview) {
-        setOtpInput(otpRes.devOtpPreview);
-      }
-      setStatusMessage(otpRes.message);
-    } catch (err) {
-      setErrorMessage(err instanceof Error ? err.message : 'Failed to request OTP');
-    } finally {
-      setIsSubmitting(false);
-    }
-  }
-
-  async function handleVerifyOtp(e: React.FormEvent): Promise<void> {
-    e.preventDefault();
-    setErrorMessage(null);
-    setStatusMessage(null);
-    setIsSubmitting(true);
-
-    try {
-      const res = await fetch(`${apiBaseUrl}/auth/otp/verify`, {
+      const res = await fetch(`${apiBaseUrl}/auth/signin`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify({
-          phoneNumber: phoneInput,
-          code: otpInput,
-          displayName: displayNameInput,
+          identifier: signInIdentifier,
+          password: signInPassword,
         }),
       });
 
       const data = await res.json();
       if (!res.ok) {
         throw new Error(
-          Array.isArray(data.message) ? data.message.join(', ') : data.message || 'OTP verification failed',
+          Array.isArray(data.message)
+            ? data.message.join(', ')
+            : data.message || 'Sign in failed',
         );
       }
 
       const session = data as AuthSessionResponse;
       onSessionEstablished(session);
-      setOtpRequested(null);
-      setStatusMessage(`Signed in as ${session.user.profile.displayName} (@${session.user.profile.username})`);
+      setStatusMessage(
+        `Signed in as ${session.user.profile.displayName}`,
+      );
     } catch (err) {
-      setErrorMessage(err instanceof Error ? err.message : 'Failed to verify OTP');
+      setErrorMessage(err instanceof Error ? err.message : 'Failed to sign in');
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  async function handlePasswordSignUp(e: React.FormEvent): Promise<void> {
+    e.preventDefault();
+    setErrorMessage(null);
+    setStatusMessage(null);
+    setIsSubmitting(true);
+
+    try {
+      const res = await fetch(`${apiBaseUrl}/auth/signup`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          username: signUpUsername,
+          password: signUpPassword,
+          displayName: signUpDisplayName.trim() || undefined,
+          email: signUpEmail.trim() || undefined,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(
+          Array.isArray(data.message)
+            ? data.message.join(', ')
+            : data.message || 'Account creation failed',
+        );
+      }
+
+      const session = data as AuthSessionResponse;
+      onSessionEstablished(session);
+      setStatusMessage(
+        `Welcome to RidersClub, ${session.user.profile.displayName}!`,
+      );
+    } catch (err) {
+      setErrorMessage(err instanceof Error ? err.message : 'Failed to create account');
     } finally {
       setIsSubmitting(false);
     }
@@ -361,86 +374,188 @@ export function AuthAndProfileView({
 
       {!currentUser ? (
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-          {/* Phone Number OTP Authentication Card */}
+          {/* Username & Password Authentication Card (Sign In / Sign Up) */}
           <Card>
             <CardHeader>
-              <CardTitle className="text-xl">Sign In with Phone OTP</CardTitle>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <CardTitle className="text-xl">
+                  {authMode === 'signin'
+                    ? 'Sign In with Username & Password'
+                    : 'Create Rider Account'}
+                </CardTitle>
+                <div
+                  role="tablist"
+                  aria-label="Authentication Mode"
+                  className="inline-flex rounded-xl border border-slate-200 bg-slate-100 p-1 text-xs font-semibold"
+                >
+                  <button
+                    type="button"
+                    role="tab"
+                    aria-selected={authMode === 'signin'}
+                    onClick={() => {
+                      setAuthMode('signin');
+                      setErrorMessage(null);
+                      setStatusMessage(null);
+                    }}
+                    className={`rounded-lg px-3 py-1.5 transition-colors ${
+                      authMode === 'signin'
+                        ? 'bg-white text-primary-900 shadow-xs'
+                        : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    Sign In
+                  </button>
+                  <button
+                    type="button"
+                    role="tab"
+                    aria-selected={authMode === 'signup'}
+                    onClick={() => {
+                      setAuthMode('signup');
+                      setErrorMessage(null);
+                      setStatusMessage(null);
+                    }}
+                    className={`rounded-lg px-3 py-1.5 transition-colors ${
+                      authMode === 'signup'
+                        ? 'bg-white text-primary-900 shadow-xs'
+                        : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    Sign Up
+                  </button>
+                </div>
+              </div>
               <CardDescription>
-                Receive a 6-digit verification code on your phone number to sign in.
+                {authMode === 'signin'
+                  ? 'Sign in with your RidersClub username (or email) and password.'
+                  : 'Create a free rider account with a username and password.'}
               </CardDescription>
             </CardHeader>
 
             <CardContent className="space-y-4">
-              <form onSubmit={handleRequestOtp} className="space-y-3">
-                <div>
-                  <label
-                    htmlFor="otp-phone-input"
-                    className="block text-xs font-semibold text-slate-700"
-                  >
-                    Phone Number (E.164 format)
-                  </label>
-                  <input
-                    id="otp-phone-input"
-                    type="tel"
-                    value={phoneInput}
-                    onChange={(e) => setPhoneInput(e.target.value)}
-                    placeholder="+911234567890"
-                    className="mt-1 h-10 w-full rounded-xl border border-slate-300 px-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-primary-600 focus:outline-none focus:ring-2 focus:ring-primary-600/20 focus:placeholder:text-transparent"
-                  />
-                </div>
-                <div>
-                  <label
-                    htmlFor="otp-name-input"
-                    className="block text-xs font-semibold text-slate-700"
-                  >
-                    Display Name (for new rider accounts)
-                  </label>
-                  <input
-                    id="otp-name-input"
-                    type="text"
-                    value={displayNameInput}
-                    onChange={(e) => setDisplayNameInput(e.target.value)}
-                    placeholder="Rider name"
-                    className="mt-1 h-10 w-full rounded-xl border border-slate-300 px-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-primary-600 focus:outline-none focus:ring-2 focus:ring-primary-600/20 focus:placeholder:text-transparent"
-                  />
-                </div>
-                <Button type="submit" disabled={isSubmitting} className="w-full">
-                  <Phone className="h-4 w-4" aria-hidden="true" />
-                  Send 6-Digit OTP Code
-                </Button>
-              </form>
-
-              {otpRequested && (
-                <form
-                  onSubmit={handleVerifyOtp}
-                  className="mt-4 space-y-3 rounded-xl border border-slate-200 bg-slate-50 p-4"
-                >
-                  {otpRequested.devOtpPreview && (
-                    <div className="flex items-center justify-between rounded-lg bg-yellow-100 px-3 py-1.5 text-xs font-semibold text-yellow-950">
-                      <span>Local Dev OTP Code: {otpRequested.devOtpPreview}</span>
-                      <Badge variant="warning">Dev Mode</Badge>
-                    </div>
-                  )}
+              {authMode === 'signin' ? (
+                <form onSubmit={handlePasswordSignIn} className="space-y-3">
                   <div>
                     <label
-                      htmlFor="otp-code-input"
-                      className="block text-xs font-semibold text-slate-800"
+                      htmlFor="signin-identifier-input"
+                      className="block text-xs font-semibold text-slate-700"
                     >
-                      Enter 6-Digit OTP Code
+                      Username or Email
                     </label>
                     <input
-                      id="otp-code-input"
+                      id="signin-identifier-input"
                       type="text"
-                      maxLength={6}
-                      value={otpInput}
-                      onChange={(e) => setOtpInput(e.target.value)}
-                      placeholder="123456"
-                      className="mt-1 h-10 w-full rounded-xl border border-slate-300 bg-white px-3 font-mono text-sm tracking-widest focus:border-primary-600 focus:outline-none"
+                      required
+                      autoComplete="username"
+                      value={signInIdentifier}
+                      onChange={(e) => setSignInIdentifier(e.target.value)}
+                      placeholder="aarav_rides or aarav@ridersclub.dev"
+                      className="mt-1 h-10 w-full rounded-xl border border-slate-300 px-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-primary-600 focus:outline-none focus:ring-2 focus:ring-primary-600/20 focus:placeholder:text-transparent"
+                    />
+                  </div>
+                  <div>
+                    <label
+                      htmlFor="signin-password-input"
+                      className="block text-xs font-semibold text-slate-700"
+                    >
+                      Password
+                    </label>
+                    <input
+                      id="signin-password-input"
+                      type="password"
+                      required
+                      autoComplete="current-password"
+                      value={signInPassword}
+                      onChange={(e) => setSignInPassword(e.target.value)}
+                      placeholder="Enter your password"
+                      className="mt-1 h-10 w-full rounded-xl border border-slate-300 px-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-primary-600 focus:outline-none focus:ring-2 focus:ring-primary-600/20 focus:placeholder:text-transparent"
                     />
                   </div>
                   <Button type="submit" disabled={isSubmitting} className="w-full">
-                    <KeyRound className="h-4 w-4" aria-hidden="true" />
-                    Verify OTP & Sign In
+                    <LogIn className="h-4 w-4" aria-hidden="true" />
+                    Sign In
+                  </Button>
+                </form>
+              ) : (
+                <form onSubmit={handlePasswordSignUp} className="space-y-3">
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    <div>
+                      <label
+                        htmlFor="signup-username-input"
+                        className="block text-xs font-semibold text-slate-700"
+                      >
+                        Username (@handle) *
+                      </label>
+                      <input
+                        id="signup-username-input"
+                        type="text"
+                        required
+                        minLength={3}
+                        maxLength={24}
+                        autoComplete="username"
+                        value={signUpUsername}
+                        onChange={(e) => setSignUpUsername(e.target.value)}
+                        placeholder="aarav_rides"
+                        className="mt-1 h-10 w-full rounded-xl border border-slate-300 px-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-primary-600 focus:outline-none focus:ring-2 focus:ring-primary-600/20 focus:placeholder:text-transparent"
+                      />
+                    </div>
+                    <div>
+                      <label
+                        htmlFor="signup-display-name-input"
+                        className="block text-xs font-semibold text-slate-700"
+                      >
+                        Display Name
+                      </label>
+                      <input
+                        id="signup-display-name-input"
+                        type="text"
+                        maxLength={60}
+                        autoComplete="name"
+                        value={signUpDisplayName}
+                        onChange={(e) => setSignUpDisplayName(e.target.value)}
+                        placeholder="Aarav Sharma"
+                        className="mt-1 h-10 w-full rounded-xl border border-slate-300 px-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-primary-600 focus:outline-none focus:ring-2 focus:ring-primary-600/20 focus:placeholder:text-transparent"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label
+                      htmlFor="signup-email-input"
+                      className="block text-xs font-semibold text-slate-700"
+                    >
+                      Email Address (optional)
+                    </label>
+                    <input
+                      id="signup-email-input"
+                      type="email"
+                      autoComplete="email"
+                      value={signUpEmail}
+                      onChange={(e) => setSignUpEmail(e.target.value)}
+                      placeholder="aarav@ridersclub.dev"
+                      className="mt-1 h-10 w-full rounded-xl border border-slate-300 px-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-primary-600 focus:outline-none focus:ring-2 focus:ring-primary-600/20 focus:placeholder:text-transparent"
+                    />
+                  </div>
+                  <div>
+                    <label
+                      htmlFor="signup-password-input"
+                      className="block text-xs font-semibold text-slate-700"
+                    >
+                      Password (min 6 characters) *
+                    </label>
+                    <input
+                      id="signup-password-input"
+                      type="password"
+                      required
+                      minLength={6}
+                      autoComplete="new-password"
+                      value={signUpPassword}
+                      onChange={(e) => setSignUpPassword(e.target.value)}
+                      placeholder="Create a password"
+                      className="mt-1 h-10 w-full rounded-xl border border-slate-300 px-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-primary-600 focus:outline-none focus:ring-2 focus:ring-primary-600/20 focus:placeholder:text-transparent"
+                    />
+                  </div>
+                  <Button type="submit" disabled={isSubmitting} className="w-full">
+                    <UserPlus className="h-4 w-4" aria-hidden="true" />
+                    Create Account & Sign In
                   </Button>
                 </form>
               )}
@@ -520,7 +635,7 @@ export function AuthAndProfileView({
                     className="absolute right-0 top-full z-50 mt-1.5 w-72 rounded-xl border border-yellow-200 bg-yellow-50 p-3.5 text-xs leading-relaxed text-yellow-950 shadow-lg sm:w-80"
                   >
                     <p>
-                      Update how your profile appears across Blogs, Communities, Rides, Help,
+                      Update how your profile appears across News, Communities, Rides, Help,
                       Mechanics, and Marketplace.
                     </p>
                   </div>

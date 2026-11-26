@@ -1,10 +1,10 @@
 {
   "latestErrorEvent": {
     "code": "TYPE-001",
-    "message": "Failed to generate type declaration. Execute the below cmd to reproduce and fix the error. #TYPE-001\nargs: {\"cmd\":\"C:\\\\Users\\\\dhivy\\\\AppData\\\\Roaming\\\\fnm\\\\aliases\\\\default\\\\node.exe D:\\\\Projects\\\\Worldonwheels\\\\2026\\\\ridersclub\\\\node_modules\\\\.pnpm\\\\typescript@5.9.3\\\\node_modules\\\\typescript\\\\bin\\\\tsc --project D:\\\\Projects\\\\Worldonwheels\\\\2026\\\\ridersclub\\\\apps\\\\community\\\\node_modules\\\\.federation\\\\tsconfig.3ebea835490663a0748dae1b1103948c.json\"}\nView the docs to see how to solve: https://module-federation.io/guide/troubleshooting/type#type-001",
+    "message": "Failed to generate type declaration. Execute the below cmd to reproduce and fix the error. #TYPE-001\nargs: {\"cmd\":\"C:\\\\Users\\\\dhivy\\\\AppData\\\\Roaming\\\\fnm\\\\aliases\\\\default\\\\node.exe D:\\\\Projects\\\\Worldonwheels\\\\2026\\\\ridersclub\\\\node_modules\\\\.pnpm\\\\typescript@5.9.3\\\\node_modules\\\\typescript\\\\bin\\\\tsc --project D:\\\\Projects\\\\Worldonwheels\\\\2026\\\\ridersclub\\\\apps\\\\community\\\\node_modules\\\\.federation\\\\tsconfig.8c5a03a1af2f2be80a4b09ddec2f63e0.json\"}\nView the docs to see how to solve: https://module-federation.io/guide/troubleshooting/type#type-001",
     "args": {
-      "cmd": "C:\\Users\\dhivy\\AppData\\Roaming\\fnm\\aliases\\default\\node.exe D:\\Projects\\Worldonwheels\\2026\\ridersclub\\node_modules\\.pnpm\\typescript@5.9.3\\node_modules\\typescript\\bin\\tsc --project D:\\Projects\\Worldonwheels\\2026\\ridersclub\\apps\\community\\node_modules\\.federation\\tsconfig.3ebea835490663a0748dae1b1103948c.json"
+      "cmd": "C:\\Users\\dhivy\\AppData\\Roaming\\fnm\\aliases\\default\\node.exe D:\\Projects\\Worldonwheels\\2026\\ridersclub\\node_modules\\.pnpm\\typescript@5.9.3\\node_modules\\typescript\\bin\\tsc --project D:\\Projects\\Worldonwheels\\2026\\ridersclub\\apps\\community\\node_modules\\.federation\\tsconfig.8c5a03a1af2f2be80a4b09ddec2f63e0.json"
     },
-    "timestamp": 1794855802042
+    "timestamp": 1795702372243
   }
 }

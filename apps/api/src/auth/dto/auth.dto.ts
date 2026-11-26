@@ -7,7 +7,70 @@ import {
   Length,
   Matches,
   MaxLength,
+  MinLength,
 } from 'class-validator';
+
+export class PasswordSignUpDto {
+  @ApiProperty({
+    example: 'aarav_rides',
+    description: 'Unique rider handle (3-24 characters, letters, numbers, underscores)',
+  })
+  @IsString()
+  @IsNotEmpty()
+  @MinLength(3, { message: 'Username must be at least 3 characters long.' })
+  @MaxLength(24, { message: 'Username cannot exceed 24 characters.' })
+  @Matches(/^[a-zA-Z0-9_]+$/, {
+    message: 'Username can only contain letters, numbers, and underscores.',
+  })
+  username!: string;
+
+  @ApiProperty({
+    example: 'StrongRiderPass123!',
+    description: 'Account password (minimum 6 characters)',
+  })
+  @IsString()
+  @IsNotEmpty()
+  @MinLength(6, { message: 'Password must be at least 6 characters long.' })
+  @MaxLength(128)
+  password!: string;
+
+  @ApiPropertyOptional({
+    example: 'Aarav Sharma',
+    description: 'Public display name on RidersClub',
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(60)
+  displayName?: string;
+
+  @ApiPropertyOptional({
+    example: 'aarav@ridersclub.dev',
+    description: 'Optional email address for account recovery and Google linking',
+  })
+  @IsOptional()
+  @IsEmail({}, { message: 'Please provide a valid email address.' })
+  email?: string;
+}
+
+export class PasswordSignInDto {
+  @ApiProperty({
+    example: 'aarav_rides',
+    description: 'Username (@handle) or email address',
+  })
+  @IsString()
+  @IsNotEmpty({ message: 'Please enter your username or email.' })
+  @MaxLength(120)
+  identifier!: string;
+
+  @ApiProperty({
+    example: 'StrongRiderPass123!',
+    description: 'Account password',
+  })
+  @IsString()
+  @IsNotEmpty({ message: 'Please enter your password.' })
+  @MaxLength(128)
+  password!: string;
+}
 
 export class RequestOtpDto {
   @ApiProperty({

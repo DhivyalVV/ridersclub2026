@@ -4,23 +4,25 @@ import { RIDERSCLUB_OPEN_CHAT_EVENT } from '@ridersclub/ui';
 import { CommunityRemoteApp } from '../CommunityRemoteApp.js';
 
 afterEach(() => {
+  window.localStorage.removeItem('ridersclub:auth_user');
+  window.localStorage.removeItem('ridersclub_auth_user');
   cleanup();
 });
 
 describe('CommunityRemoteApp federated remote (Phase 6 Communities, Chat & Blogs)', () => {
-  it('renders Communities and Rider Blogs as separate dedicated views without an internal tab switcher', () => {
+  it('renders Communities and News as separate dedicated views without an internal tab switcher', () => {
     const { unmount } = render(<CommunityRemoteApp initialSection="communities" />);
 
     expect(screen.getByText('Riding Communities')).toBeTruthy();
     expect(screen.getByText('You are not in any groups')).toBeTruthy();
-    expect(screen.queryByRole('tab', { name: /Rider Blogs/i })).toBeNull();
-    expect(screen.queryByRole('button', { name: /Write Blog/i })).toBeNull();
+    expect(screen.queryByRole('tab', { name: /News/i })).toBeNull();
+    expect(screen.queryByRole('button', { name: /Publish News/i })).toBeNull();
 
     unmount();
 
-    render(<CommunityRemoteApp initialSection="blogs" />);
+    render(<CommunityRemoteApp initialSection="news" />);
 
-    expect(screen.getByText('Rider Blogs & Technical Guides')).toBeTruthy();
+    expect(screen.getByRole('heading', { name: 'News' })).toBeTruthy();
     expect(
       screen.getByText('High-Altitude Braking & Clutch Care Before a Spiti Circuit'),
     ).toBeTruthy();
@@ -60,6 +62,16 @@ describe('CommunityRemoteApp federated remote (Phase 6 Communities, Chat & Blogs
     const searchInput = screen.getByLabelText('Search communities');
     fireEvent.change(searchInput, { target: { value: 'Western Ghats' } });
 
+    // Opening a public community before joining shows the locked chat warning message
+    fireEvent.click(screen.getByText('Western Ghats ADV Tourers'));
+    expect(screen.getByText('Community Chat Locked')).toBeTruthy();
+    expect(
+      screen.getByText(
+        /Only members can view or send messages in Community Chat\. Join this community to access the chat\./i,
+      ),
+    ).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: /Back to communities list/i }));
+
     const joinBtn = screen.getByRole('button', { name: /Join Community/i });
     fireEvent.click(joinBtn);
 
@@ -68,7 +80,7 @@ describe('CommunityRemoteApp federated remote (Phase 6 Communities, Chat & Blogs
     ).toBeTruthy();
 
     // Clear search: joined community is now listed in user's WhatsApp-style group list
-    fireEvent.change(searchInput, { target: { value: '' } });
+    fireEvent.change(screen.getByLabelText('Search communities'), { target: { value: '' } });
     expect(screen.getByText('My Communities (1)')).toBeTruthy();
     expect(screen.getByText('Western Ghats ADV Tourers')).toBeTruthy();
 
@@ -85,7 +97,10 @@ describe('CommunityRemoteApp federated remote (Phase 6 Communities, Chat & Blogs
       screen.getByRole('button', { name: /View members of Western Ghats ADV Tourers/i }),
     );
     expect(screen.getByText(/Approved Members/i)).toBeTruthy();
-    expect(screen.getByRole('button', { name: /^Leave$/i })).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: /Group options/i }));
+    expect(screen.getByRole('menuitem', { name: /^Leave$/i })).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: /Group options/i }));
+    expect(screen.queryByRole('menuitem', { name: /^Leave$/i })).toBeNull();
     expect(screen.queryByText(/Tap for group info/i)).toBeNull();
 
     // Click Back on the members screen to return to the chat view
@@ -107,12 +122,16 @@ describe('CommunityRemoteApp federated remote (Phase 6 Communities, Chat & Blogs
     fireEvent.click(screen.getByRole('button', { name: /Back to communities list/i }));
     expect(screen.getByText('My Communities (1)')).toBeTruthy();
 
-    // Re-open group, open group info, and click Leave button
+    // Re-open group, open group info, verify Share button, and click Leave button
     fireEvent.click(screen.getByText('Western Ghats ADV Tourers'));
     fireEvent.click(
       screen.getByRole('button', { name: /View members of Western Ghats ADV Tourers/i }),
     );
-    fireEvent.click(screen.getByRole('button', { name: /^Leave$/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Group options/i }));
+    expect(screen.getByRole('menuitem', { name: /^Share$/i })).toBeTruthy();
+    fireEvent.click(screen.getByRole('menuitem', { name: /^Share$/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Group options/i }));
+    fireEvent.click(screen.getByRole('menuitem', { name: /^Leave$/i }));
 
     expect(screen.getByText('You are not in any groups')).toBeTruthy();
   });
@@ -212,12 +231,32 @@ describe('CommunityRemoteApp federated remote (Phase 6 Communities, Chat & Blogs
     ).toMatch(/Community already present, cannot create duplicate\./i);
   });
 
-  it('opens full blog reader, toggles Like reaction, and posts a rider comment', () => {
-    render(<CommunityRemoteApp initialSection="blogs" />);
+  it('renders news cards with header image and description, opens full news in a new page on click, and returns via Back to News', () => {
+    render(<CommunityRemoteApp initialSection="news" />);
 
-    const readButtons = screen.getAllByRole('button', { name: /Read Full Article/i });
-    fireEvent.click(readButtons[0]!);
+    // Non-admin user does not see Publish News button
+    expect(screen.queryByRole('button', { name: /Publish News/i })).toBeNull();
 
+    // News card displays header image and description
+    const headerImg = screen.getByRole('img', {
+      name: 'High-Altitude Braking & Clutch Care Before a Spiti Circuit',
+    });
+    expect(headerImg).toBeTruthy();
+    expect(
+      screen.getByText(/How DOT 4 boiling points, braided steel lines/i),
+    ).toBeTruthy();
+
+    // Click on the news card to see the full news in a new page
+    const newsCard = screen.getByRole('article', {
+      name: 'High-Altitude Braking & Clutch Care Before a Spiti Circuit',
+    });
+    fireEvent.click(newsCard);
+
+    // Full news page is rendered and other news cards from the list page are hidden
+    expect(screen.getByTestId('full-news-page')).toBeTruthy();
+    expect(
+      screen.queryByText('Pre-Purchase Inspection Checklist for Used Dual-Sport Motorcycles'),
+    ).toBeNull();
     expect(
       screen.getByText(/Long mountain descents from Kunzum La and Rohtang/i),
     ).toBeTruthy();
@@ -234,6 +273,122 @@ describe('CommunityRemoteApp federated remote (Phase 6 Communities, Chat & Blogs
 
     expect(
       screen.getByText('Verified 2.5mm clutch free-play before climbing Kunzum Pass.'),
+    ).toBeTruthy();
+
+    // Click Back to News to return to the news list page
+    fireEvent.click(screen.getByRole('button', { name: /Back to News/i }));
+    expect(screen.queryByTestId('full-news-page')).toBeNull();
+    expect(
+      screen.getByText('Pre-Purchase Inspection Checklist for Used Dual-Sport Motorcycles'),
+    ).toBeTruthy();
+  });
+
+  it('shows Delete in group info only for ADMIN on public communities, and lets ADMIN delete it', () => {
+    const openGroupInfo = () => {
+      fireEvent.change(screen.getByLabelText('Search communities'), {
+        target: { value: 'Western Ghats' },
+      });
+      fireEvent.click(screen.getByText('Western Ghats ADV Tourers'));
+      fireEvent.click(
+        screen.getByRole('button', { name: /View members of Western Ghats ADV Tourers/i }),
+      );
+    };
+
+    // Normal USER: no delete option on a public community
+    window.localStorage.setItem(
+      'ridersclub:auth_user',
+      JSON.stringify({
+        id: 'user-normal-1',
+        role: 'USER',
+        profile: { userId: 'user-normal-1', username: 'normal_rider', displayName: 'Normal Rider' },
+      }),
+    );
+    const { unmount } = render(<CommunityRemoteApp />);
+    openGroupInfo();
+    fireEvent.click(screen.getByRole('button', { name: /Group options/i }));
+    expect(screen.getByRole('menuitem', { name: /^Share$/i })).toBeTruthy();
+    expect(
+      screen.queryByRole('menuitem', { name: /Delete community Western Ghats ADV Tourers/i }),
+    ).toBeNull();
+    unmount();
+
+    // ADMIN: delete option is available and removes the community
+    window.localStorage.setItem(
+      'ridersclub:auth_user',
+      JSON.stringify({
+        id: 'user-admin-1',
+        role: 'ADMIN',
+        profile: { userId: 'user-admin-1', username: 'rc_admin', displayName: 'RidersClub Admin' },
+      }),
+    );
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+    render(<CommunityRemoteApp />);
+    openGroupInfo();
+    fireEvent.click(screen.getByRole('button', { name: /Group options/i }));
+    fireEvent.click(
+      screen.getByRole('menuitem', { name: /Delete community Western Ghats ADV Tourers/i }),
+    );
+    expect(confirmSpy).toHaveBeenCalled();
+    expect(screen.getByText(/Deleted community Western Ghats ADV Tourers/i)).toBeTruthy();
+    confirmSpy.mockRestore();
+  });
+
+  it('allows only ADMIN users to publish news with a header image and description', () => {
+    // 1. Normal USER cannot see Publish News button
+    window.localStorage.setItem(
+      'ridersclub:auth_user',
+      JSON.stringify({
+        id: 'user-normal-1',
+        role: 'USER',
+        profile: {
+          userId: 'user-normal-1',
+          username: 'normal_rider',
+          displayName: 'Normal Rider',
+        },
+      }),
+    );
+
+    const { unmount } = render(<CommunityRemoteApp initialSection="news" />);
+    expect(screen.queryByRole('button', { name: /Publish News/i })).toBeNull();
+    unmount();
+
+    // 2. ADMIN user sees Publish News button and can publish a news article
+    window.localStorage.setItem(
+      'ridersclub:auth_user',
+      JSON.stringify({
+        id: 'user-admin-1',
+        role: 'ADMIN',
+        profile: {
+          userId: 'user-admin-1',
+          username: 'rc_admin',
+          displayName: 'RidersClub Admin',
+        },
+      }),
+    );
+
+    render(<CommunityRemoteApp initialSection="news" />);
+
+    const publishBtn = screen.getByRole('button', { name: /Publish News/i });
+    fireEvent.click(publishBtn);
+
+    fireEvent.change(screen.getByLabelText(/News Headline \/ Title/i), {
+      target: { value: 'Monsoon Expressways Safety Advisory 2026' },
+    });
+    fireEvent.change(screen.getByLabelText(/Header Image URL/i), {
+      target: { value: 'https://images.unsplash.com/photo-1558981403-c5f9899a28bc' },
+    });
+    fireEvent.change(screen.getByLabelText(/Short Description/i), {
+      target: { value: 'Official tire pressure and hydroplaning guidance for heavy coastal rain.' },
+    });
+    fireEvent.change(screen.getByLabelText(/Full News Content/i), {
+      target: { value: 'Inspect tread depth indicators and reduce speed on wet concrete.' },
+    });
+
+    fireEvent.submit(screen.getByLabelText(/News Headline \/ Title/i).closest('form')!);
+
+    expect(screen.getByText('Monsoon Expressways Safety Advisory 2026')).toBeTruthy();
+    expect(
+      screen.getByText('Official tire pressure and hydroplaning guidance for heavy coastal rain.'),
     ).toBeTruthy();
   });
 });

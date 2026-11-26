@@ -27,6 +27,17 @@ export default defineConfig(({ mode }) => {
       strictPort: true,
       cors: true,
     },
+    optimizeDeps: {
+      include: [
+        'react',
+        'react-dom',
+        'react-dom/client',
+        'react/jsx-runtime',
+        'react/jsx-dev-runtime',
+        'react-router-dom',
+        'lucide-react',
+      ],
+    },
     plugins: [
       react(),
       federation({

@@ -64,20 +64,29 @@ describe('CommunitiesService', () => {
     expect(privateJoin.status).toBe(CommunityMembershipStatus.PENDING);
   });
 
-  it('blocks non-members from reading PRIVATE community chat messages', async () => {
+  it('blocks non-members from reading PUBLIC and PRIVATE community chat messages', async () => {
     const mockPrisma = {
       community: {
-        findUnique: jest.fn().mockResolvedValue({
-          id: 'comm-private',
-          visibility: CommunityVisibility.PRIVATE,
-        }),
+        findUnique: jest
+          .fn()
+          .mockResolvedValueOnce({
+            id: 'comm-private',
+            visibility: CommunityVisibility.PRIVATE,
+          })
+          .mockResolvedValueOnce({
+            id: 'comm-public',
+            visibility: CommunityVisibility.PUBLIC,
+          }),
       },
       communityMember: {
-        findUnique: jest.fn().mockResolvedValue({
-          id: 'mem-pending',
-          status: CommunityMembershipStatus.PENDING,
-          role: CommunityMemberRole.MEMBER,
-        }),
+        findUnique: jest
+          .fn()
+          .mockResolvedValueOnce({
+            id: 'mem-pending',
+            status: CommunityMembershipStatus.PENDING,
+            role: CommunityMemberRole.MEMBER,
+          })
+          .mockResolvedValueOnce(null),
       },
     };
 
@@ -88,6 +97,10 @@ describe('CommunitiesService', () => {
 
     await expect(
       service.listMessages('comm-private', { sub: 'user-pending', role: UserRole.USER }),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+
+    await expect(
+      service.listMessages('comm-public', { sub: 'user-non-member', role: UserRole.USER }),
     ).rejects.toBeInstanceOf(ForbiddenException);
   });
 
@@ -224,6 +237,74 @@ describe('CommunitiesService', () => {
         visibility: CommunityVisibility.PRIVATE,
       }),
     ).rejects.toThrow('Community already present, cannot create duplicate.');
+  });
+
+  describe('deleteCommunity permissions', () => {
+    const publicCommunity = {
+      id: 'comm-public',
+      founderId: 'public-founder',
+      visibility: CommunityVisibility.PUBLIC,
+    };
+    const privateCommunity = {
+      id: 'comm-private',
+      founderId: 'private-owner',
+      visibility: CommunityVisibility.PRIVATE,
+    };
+
+    function buildService(community: object) {
+      const mockPrisma = {
+        community: {
+          findUnique: jest.fn().mockResolvedValue(community),
+          delete: jest.fn().mockResolvedValue(community),
+        },
+      };
+      const service = new CommunitiesService(
+        mockPrisma as never,
+        mockProfilesService as never,
+      );
+      return { service, mockPrisma };
+    }
+
+    it('allows platform ADMIN to delete public and private communities', async () => {
+      for (const community of [publicCommunity, privateCommunity]) {
+        const { service, mockPrisma } = buildService(community);
+        await expect(
+          service.deleteCommunity(community.id, { sub: 'admin-1', role: UserRole.ADMIN }),
+        ).resolves.toEqual({ communityId: community.id, deleted: true });
+        expect(mockPrisma.community.delete).toHaveBeenCalledWith({
+          where: { id: community.id },
+        });
+      }
+    });
+
+    it('prevents general users (including the founder) from deleting a public community', async () => {
+      for (const sub of ['public-founder', 'random-user']) {
+        const { service, mockPrisma } = buildService(publicCommunity);
+        await expect(
+          service.deleteCommunity('comm-public', { sub, role: UserRole.USER }),
+        ).rejects.toBeInstanceOf(ForbiddenException);
+        expect(mockPrisma.community.delete).not.toHaveBeenCalled();
+      }
+    });
+
+    it('allows the owner of a private community to delete it but not other users', async () => {
+      const owner = buildService(privateCommunity);
+      await expect(
+        owner.service.deleteCommunity('comm-private', {
+          sub: 'private-owner',
+          role: UserRole.USER,
+        }),
+      ).resolves.toEqual({ communityId: 'comm-private', deleted: true });
+
+      const stranger = buildService(privateCommunity);
+      await expect(
+        stranger.service.deleteCommunity('comm-private', {
+          sub: 'someone-else',
+          role: UserRole.MODERATOR,
+        }),
+      ).rejects.toBeInstanceOf(ForbiddenException);
+      expect(stranger.mockPrisma.community.delete).not.toHaveBeenCalled();
+    });
   });
 });
 

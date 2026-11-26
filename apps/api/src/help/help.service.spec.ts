@@ -54,8 +54,6 @@ describe('HelpService', () => {
       description: 'Need portable air pump near highway toll.',
       locationConsentGranted: false,
       locationLabel: 'Secret exact spot',
-      latitude: 13.3409,
-      longitude: 77.101,
     });
 
     expect(createMock).toHaveBeenCalledWith(
@@ -70,12 +68,9 @@ describe('HelpService', () => {
     );
 
     expect(result.locationSharedWithConsent).toBe(false);
-    expect(result.latitude).toBeNull();
-    expect(result.longitude).toBeNull();
-    expect(result.externalMapUrl).toBeNull();
   });
 
-  it('stores coordinates and builds an external OpenStreetMap URL when locationConsentGranted is true', async () => {
+  it('stores city and landmark locationLabel when locationConsentGranted is true', async () => {
     const createMock = jest.fn().mockImplementation(async ({ data }) => ({
       id: 'help-with-consent',
       ...data,
@@ -102,18 +97,14 @@ describe('HelpService', () => {
       description: 'Ran out of petrol 4km before highway exit.',
       vehicleSummary: 'KTM 390 Adventure',
       locationConsentGranted: true,
-      locationLabel: 'NH-48 Milestone 62',
-      latitude: 13.3409,
-      longitude: 77.101,
+      locationLabel: 'Bengaluru • NH-48 Milestone 62',
     });
 
     expect(result.locationSharedWithConsent).toBe(true);
-    expect(result.latitude).toBe(13.3409);
-    expect(result.longitude).toBe(77.101);
-    expect(result.externalMapUrl).toContain('openstreetmap.org');
+    expect(result.locationLabel).toBe('Bengaluru • NH-48 Milestone 62');
   });
 
-  it('automatically redacts GPS coordinates when status transitions to RESOLVED', async () => {
+  it('automatically redacts location when status transitions to RESOLVED', async () => {
     const updateMock = jest.fn().mockImplementation(async ({ data }) => ({
       id: 'help-1',
       requesterId: 'user-requester-1',
@@ -175,8 +166,6 @@ describe('HelpService', () => {
 
     expect(result.status).toBe(HelpRequestStatus.RESOLVED);
     expect(result.locationSharedWithConsent).toBe(false);
-    expect(result.latitude).toBeNull();
-    expect(result.longitude).toBeNull();
   });
 
   it('rejects status updates from non-owner non-moderator users with ForbiddenException', async () => {

@@ -107,6 +107,7 @@ model User {
   email                String?              @unique
   phoneNumber          String?              @unique
   googleSubjectId      String?              @unique
+  passwordHash         String?
   role                 UserRole             @default(USER)
   accountStatus        AccountStatus        @default(ACTIVE)
   allowDirectMessages  DirectMessagePrivacy @default(EVERYONE)
@@ -210,6 +211,7 @@ model Blog {
   title           String
   excerpt         String
   content         String
+  imageUrl        String?
   tags            String[]
   readTimeMinutes Int            @default(3)
   createdAt       DateTime       @default(now())

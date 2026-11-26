@@ -16,7 +16,7 @@ describe('BlogsService', () => {
     })),
   };
 
-  it('rejects blog update when actor is neither the author nor a moderator/admin', async () => {
+  it('rejects news creation and update when actor is not an ADMIN', async () => {
     const mockPrisma = {
       blog: {
         findUnique: jest.fn().mockResolvedValue({
@@ -24,6 +24,7 @@ describe('BlogsService', () => {
           authorId: 'author-owner-1',
           content: 'Original content body with enough words.',
         }),
+        create: jest.fn(),
         update: jest.fn(),
       },
     };
@@ -34,6 +35,17 @@ describe('BlogsService', () => {
     );
 
     await expect(
+      service.createBlog(
+        { sub: 'normal-user-1', role: UserRole.USER },
+        {
+          title: 'Unauthorized News Post',
+          excerpt: 'Normal user should not be able to publish news',
+          content: 'Detailed body content.',
+        },
+      ),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+
+    await expect(
       service.updateBlog(
         'blog-123',
         { sub: 'other-user-2', role: UserRole.USER },
@@ -41,16 +53,17 @@ describe('BlogsService', () => {
       ),
     ).rejects.toBeInstanceOf(ForbiddenException);
 
+    expect(mockPrisma.blog.create).not.toHaveBeenCalled();
     expect(mockPrisma.blog.update).not.toHaveBeenCalled();
   });
 
-  it('allows blog author to update their own blog and recalculates readTimeMinutes', async () => {
+  it('allows ADMIN to create and update news with header imageUrl and recalculates readTimeMinutes', async () => {
     const now = new Date();
     const mockPrisma = {
       blog: {
         findUnique: jest.fn().mockResolvedValue({
           id: 'blog-123',
-          authorId: 'author-owner-1',
+          authorId: 'admin-owner-1',
           content: 'Original content.',
         }),
         update: jest.fn().mockResolvedValue({
@@ -59,13 +72,14 @@ describe('BlogsService', () => {
           title: 'Updated Title',
           excerpt: 'Updated excerpt for braking guide.',
           content: 'Updated detailed content for mountain descents.',
+          imageUrl: 'https://images.unsplash.com/photo-1558981403-c5f9899a28bc',
           tags: ['Brakes', 'Safety'],
           readTimeMinutes: 1,
           createdAt: now,
           updatedAt: now,
           author: {
-            id: 'author-owner-1',
-            role: UserRole.USER,
+            id: 'admin-owner-1',
+            role: UserRole.ADMIN,
             phoneNumber: null,
             allowDirectMessages: 'EVERYONE',
             profile: null,
@@ -82,11 +96,15 @@ describe('BlogsService', () => {
 
     const updated = await service.updateBlog(
       'blog-123',
-      { sub: 'author-owner-1', role: UserRole.USER },
-      { title: 'Updated Title' },
+      { sub: 'admin-owner-1', role: UserRole.ADMIN },
+      {
+        title: 'Updated Title',
+        imageUrl: 'https://images.unsplash.com/photo-1558981403-c5f9899a28bc',
+      },
     );
 
     expect(updated.title).toBe('Updated Title');
+    expect(updated.imageUrl).toBe('https://images.unsplash.com/photo-1558981403-c5f9899a28bc');
     expect(updated.likesCount).toBe(5);
     expect(updated.commentsCount).toBe(2);
   });

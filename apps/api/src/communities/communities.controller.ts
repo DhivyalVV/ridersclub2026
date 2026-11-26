@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   HttpCode,
   HttpStatus,
@@ -130,6 +131,21 @@ export class CommunitiesController {
     @CurrentUser() user: JwtAccessPayload,
   ): Promise<{ communityId: string; left: boolean }> {
     return this.communitiesService.leaveCommunity(id, user.sub);
+  }
+
+  @Delete(':id')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary:
+      'Delete a community (Admins: any community; Owner: own private community only)',
+  })
+  async deleteCommunity(
+    @Param('id') id: string,
+    @CurrentUser() user: JwtAccessPayload,
+  ): Promise<{ communityId: string; deleted: boolean }> {
+    return this.communitiesService.deleteCommunity(id, user);
   }
 
   @Patch(':id/members/:memberUserId/approve')

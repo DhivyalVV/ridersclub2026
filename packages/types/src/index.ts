@@ -179,6 +179,7 @@ export interface BlogPostItem {
   title: string;
   excerpt: string;
   content: string;
+  imageUrl?: string | null;
   tags: string[];
   readTimeMinutes: number;
   likesCount: number;
@@ -194,6 +195,7 @@ export interface CreateBlogPayload {
   title: string;
   excerpt: string;
   content: string;
+  imageUrl?: string | null;
   tags: string[];
 }
 
@@ -201,6 +203,7 @@ export interface UpdateBlogPayload {
   title?: string;
   excerpt?: string;
   content?: string;
+  imageUrl?: string | null;
   tags?: string[];
 }
 
@@ -359,10 +362,6 @@ export interface HelpRequestItem {
   status: HelpRequestStatus;
   locationSharedWithConsent: boolean;
   locationLabel: string;
-  latitude: number | null;
-  longitude: number | null;
-  externalMapUrl: string | null;
-  distanceKmFromViewer: number | null;
   requester: PublicUserSummary;
   offersCount: number;
   offers?: HelpRequestOfferItem[];
@@ -378,8 +377,6 @@ export interface CreateHelpRequestPayload {
   vehicleSummary?: string;
   locationConsentGranted: boolean;
   locationLabel?: string;
-  latitude?: number;
-  longitude?: number;
 }
 
 export interface OfferHelpPayload {

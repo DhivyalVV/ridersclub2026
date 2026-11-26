@@ -41,11 +41,7 @@ export class CommunitiesService {
 
   subscribeToStream(viewerId?: string): Observable<MessageEvent> {
     return this.messageStreamSubject.asObservable().pipe(
-      filter(
-        (evt) =>
-          evt.visibility === CommunityVisibility.PUBLIC ||
-          Boolean(viewerId && evt.approvedMemberIds.includes(viewerId)),
-      ),
+      filter((evt) => Boolean(viewerId && evt.approvedMemberIds.includes(viewerId))),
       map((evt) => ({
         data: {
           type: 'community_message.created',
@@ -337,6 +333,43 @@ export class CommunitiesService {
     return { communityId, left: true };
   }
 
+  /**
+   * Delete a community.
+   * - Platform ADMINs can delete any community (public or private).
+   * - Private communities can additionally be deleted by their founder (owner).
+   * - General users can never delete public communities.
+   */
+  async deleteCommunity(
+    communityId: string,
+    actor: { sub: string; role: UserRole },
+  ): Promise<{ communityId: string; deleted: boolean }> {
+    const community = await this.prisma.community.findUnique({
+      where: { id: communityId },
+    });
+
+    if (!community) {
+      throw new NotFoundException('Community not found.');
+    }
+
+    const isAdmin = actor.role === UserRole.ADMIN;
+    const isPrivateOwner =
+      community.visibility === CommunityVisibility.PRIVATE &&
+      community.founderId === actor.sub;
+
+    if (!isAdmin && !isPrivateOwner) {
+      throw new ForbiddenException(
+        community.visibility === CommunityVisibility.PUBLIC
+          ? 'Only platform admins can delete public communities.'
+          : 'Only the community owner or a platform admin can delete this private community.',
+      );
+    }
+
+    // Members and messages are removed via onDelete: Cascade relations.
+    await this.prisma.community.delete({ where: { id: communityId } });
+
+    return { communityId, deleted: true };
+  }
+
   async approveMember(
     communityId: string,
     targetUserId: string,
@@ -409,30 +442,29 @@ export class CommunitiesService {
       throw new NotFoundException('Community not found.');
     }
 
-    if (community.visibility === CommunityVisibility.PRIVATE) {
-      const isPlatformAdmin = viewer?.role === UserRole.ADMIN;
-      if (!viewer) {
-        throw new ForbiddenException(
-          'This community is private. Sign in and join to view community chat.',
-        );
-      }
+    if (!viewer) {
+      throw new ForbiddenException(
+        community.visibility === CommunityVisibility.PRIVATE
+          ? 'This community is private. Sign in and join to view community chat.'
+          : 'Sign in and join this community to view community chat.',
+      );
+    }
 
-      if (!isPlatformAdmin) {
-        const membership = await this.prisma.communityMember.findUnique({
-          where: {
-            communityId_userId: {
-              communityId,
-              userId: viewer.sub,
-            },
-          },
-        });
+    const membership = await this.prisma.communityMember.findUnique({
+      where: {
+        communityId_userId: {
+          communityId,
+          userId: viewer.sub,
+        },
+      },
+    });
 
-        if (membership?.status !== CommunityMembershipStatus.APPROVED) {
-          throw new ForbiddenException(
-            'This community is private. Only approved members can view community chat.',
-          );
-        }
-      }
+    if (membership?.status !== CommunityMembershipStatus.APPROVED) {
+      throw new ForbiddenException(
+        community.visibility === CommunityVisibility.PRIVATE
+          ? 'This community is private. Only approved members can view community chat.'
+          : 'Only members can view or send messages in Community Chat. Join this community to access the chat.',
+      );
     }
 
     const messages = await this.prisma.communityMessage.findMany({
@@ -598,7 +630,6 @@ export class CommunitiesService {
       : undefined;
 
     const canViewMessages =
-      community.visibility === CommunityVisibility.PUBLIC ||
       viewerRecord?.status === CommunityMembershipStatus.APPROVED;
 
     const latestMsg =

@@ -33,6 +33,14 @@ export class CreateBlogDto {
   @MaxLength(25000)
   content!: string;
 
+  @ApiPropertyOptional({
+    example: 'https://images.unsplash.com/photo-1558981403-c5f9899a28bc?auto=format&fit=crop&w=1200&q=80',
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(2000000)
+  imageUrl?: string;
+
   @ApiPropertyOptional({ example: ['Brakes', 'Touring Prep', 'Safety'] })
   @IsOptional()
   @IsArray()
@@ -62,6 +70,12 @@ export class UpdateBlogDto {
   @MinLength(2)
   @MaxLength(25000)
   content?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(2000000)
+  imageUrl?: string;
 
   @ApiPropertyOptional({ example: ['Brakes', 'Touring Prep'] })
   @IsOptional()
