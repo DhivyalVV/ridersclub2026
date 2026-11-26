@@ -80,7 +80,7 @@ describe('CommunityRemoteApp federated remote (Phase 6 Communities, Chat & Blogs
     ).toBeTruthy();
 
     // Clear search: joined community is now listed in user's WhatsApp-style group list
-    fireEvent.change(searchInput, { target: { value: '' } });
+    fireEvent.change(screen.getByLabelText('Search communities'), { target: { value: '' } });
     expect(screen.getByText('My Communities (1)')).toBeTruthy();
     expect(screen.getByText('Western Ghats ADV Tourers')).toBeTruthy();
 
