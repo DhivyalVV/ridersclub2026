@@ -2083,7 +2083,7 @@ export function CommunityRemoteApp({
                 <ul
                   role="list"
                   aria-label="Community search results"
-                  className="flex-1 space-y-2.5 bg-slate-50/60 py-2.5"
+                  className="flex-1 space-y-2.5 bg-slate-50/60 pb-2.5"
                 >
                   {filteredCommunities.map((community) => {
                     const isApproved =
@@ -2098,7 +2098,7 @@ export function CommunityRemoteApp({
                       <li
                         key={community.id}
                         onClick={() => void handleOpenCommunityHub(community)}
-                        className="flex cursor-pointer items-center justify-between gap-3 border-y border-slate-200/90 bg-white px-4 py-3.5 shadow-sm transition-colors hover:border-primary-200 hover:bg-slate-50 sm:px-5"
+                        className="flex cursor-pointer items-center justify-between gap-3 border-y border-slate-200/90 bg-white px-4 py-3.5 shadow-sm transition-colors first:border-t-0 hover:border-primary-200 hover:bg-slate-50 sm:px-5"
                       >
                         <div className="flex min-w-0 flex-1 items-center gap-3.5">
                           <Avatar
@@ -2163,7 +2163,7 @@ export function CommunityRemoteApp({
               <ul
                 role="list"
                 aria-label="My communities group list"
-                className="flex-1 space-y-2.5 bg-slate-50/60 py-2.5"
+                className="flex-1 space-y-2.5 bg-slate-50/60 pb-2.5"
               >
                 {displayedCommunities.map((community) => {
                   const isPending =
@@ -2176,7 +2176,7 @@ export function CommunityRemoteApp({
                     <li
                       key={community.id}
                       onClick={() => void handleOpenCommunityHub(community)}
-                      className="flex cursor-pointer items-center gap-3.5 border-y border-slate-200/90 bg-white px-4 py-3.5 shadow-sm transition-colors hover:border-primary-200 hover:bg-slate-50 sm:px-5"
+                      className="flex cursor-pointer items-center gap-3.5 border-y border-slate-200/90 bg-white px-4 py-3.5 shadow-sm transition-colors first:border-t-0 hover:border-primary-200 hover:bg-slate-50 sm:px-5"
                     >
                       <Avatar
                         alt={community.name}
