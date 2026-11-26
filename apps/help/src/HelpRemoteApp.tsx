@@ -543,14 +543,14 @@ export function HelpRemoteApp(): React.JSX.Element {
               <div
                 role="dialog"
                 aria-label="Page information"
-                className="absolute right-0 top-full z-50 mt-1.5 w-72 space-y-1.5 rounded-xl border border-yellow-200 bg-yellow-50 p-3.5 text-xs leading-relaxed text-yellow-950 shadow-lg sm:w-80"
+                className="absolute right-0 top-full z-50 mt-1.5 w-72 space-y-1.5 rounded-xl border border-primary-200 bg-primary-50 p-3.5 text-xs leading-relaxed text-primary-950 shadow-lg sm:w-80"
               >
                 <p>
                   Request mechanical help from nearby riders or offer assistance via
                   private 1:1 chat. Coordinates are strictly opt-in and
                   automatically redacted once resolved.
                 </p>
-                <p className="font-medium text-yellow-900">
+                <p className="font-medium text-primary-900">
                   RidersClub Help is a voluntary, peer-to-peer rider assistance
                   board for mechanical breakdowns and roadside support. If you or
                   anyone else is injured or in immediate danger, call official local
@@ -570,7 +570,7 @@ export function HelpRemoteApp(): React.JSX.Element {
                 type="checkbox"
                 checked={consentChecked}
                 onChange={(e) => handleToggleLocationConsent(e.target.checked)}
-                className="h-4 w-4 rounded border-white/40 accent-yellow-500"
+                className="h-4 w-4 rounded border-white/40 accent-amber-500"
               />
               <span>
                 Share current GPS coordinates for this help request only
@@ -609,10 +609,10 @@ export function HelpRemoteApp(): React.JSX.Element {
 
       {/* Composer Form */}
       {showComposer && (
-        <Card className="border-yellow-300 bg-yellow-50/40 shadow-sm">
+        <Card className="border-amber-300 bg-amber-50 shadow-sm">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-lg">
-              <Plus className="h-5 w-5 text-yellow-600" aria-hidden="true" />
+              <Plus className="h-5 w-5 text-amber-600" aria-hidden="true" />
               Create Roadside Help Request
             </CardTitle>
             <CardDescription>
@@ -701,7 +701,7 @@ export function HelpRemoteApp(): React.JSX.Element {
               </div>
 
               {consentChecked && (
-                <div className="grid grid-cols-1 gap-3 rounded-xl border border-yellow-200 bg-white p-3.5 sm:grid-cols-2">
+                <div className="grid grid-cols-1 gap-3 rounded-xl border border-amber-200 bg-white p-3.5 sm:grid-cols-2">
                   <div>
                     <div className="mb-1 flex items-center justify-between">
                       <label
@@ -822,7 +822,7 @@ export function HelpRemoteApp(): React.JSX.Element {
           return (
             <Card
               key={req.id}
-              className="flex flex-col justify-between border-yellow-200/80"
+              className="flex flex-col justify-between border-amber-200/80"
             >
               <CardHeader>
                 <div className="flex flex-wrap items-center justify-between gap-2">

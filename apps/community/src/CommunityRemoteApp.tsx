@@ -1037,7 +1037,10 @@ export function CommunityRemoteApp({
         });
         return;
       }
-    } catch {
+    } catch (err) {
+      if (err instanceof Error && err.name === 'AbortError') {
+        return;
+      }
       // Fallback to copying link
     }
     try {
@@ -1413,7 +1416,7 @@ export function CommunityRemoteApp({
                 <div
                   role="dialog"
                   aria-label="Page information"
-                  className="absolute right-0 top-full z-50 mt-1.5 w-72 rounded-xl border border-yellow-200 bg-yellow-50 p-3.5 text-xs leading-relaxed text-yellow-950 shadow-lg sm:w-80"
+                  className="absolute right-0 top-full z-50 mt-1.5 w-72 rounded-xl border border-primary-200 bg-primary-50 p-3.5 text-xs leading-relaxed text-primary-950 shadow-lg sm:w-80"
                 >
                   <p>
                     {activeSection === 'communities'
@@ -1432,7 +1435,7 @@ export function CommunityRemoteApp({
               {activeSection === 'communities' ? (
                 <Button
                   variant="secondary"
-                  className="bg-yellow-100 text-yellow-950 hover:bg-yellow-200"
+                  className="bg-white text-primary-900 hover:bg-primary-50"
                   onClick={() => {
                     setCreateCommunityError(null);
                     setShowCreateCommunity(true);
@@ -1444,7 +1447,7 @@ export function CommunityRemoteApp({
               ) : isAdmin ? (
                 <Button
                   variant="secondary"
-                  className="bg-yellow-100 text-yellow-950 hover:bg-yellow-200"
+                  className="bg-white text-primary-900 hover:bg-primary-50"
                   onClick={openNewBlogComposer}
                 >
                   <BookOpen className="h-4 w-4" aria-hidden="true" />
@@ -1478,7 +1481,7 @@ export function CommunityRemoteApp({
 
       {/* Create Community Form Panel */}
       {showCreateCommunity ? (
-        <Card className="border-primary-200 bg-primary-50/40">
+        <Card className="border-primary-200 bg-primary-50">
           <CardHeader className="flex flex-row items-start justify-between">
             <div>
               <CardTitle>Create a Riding Community</CardTitle>
@@ -1592,7 +1595,7 @@ export function CommunityRemoteApp({
 
       {/* Create / Edit News Composer Panel (Admin Only) */}
       {showBlogComposer && isAdmin ? (
-        <Card className="border-primary-200 bg-primary-50/40">
+        <Card className="border-primary-200 bg-primary-50">
           <CardHeader className="flex flex-row items-start justify-between">
             <div>
               <CardTitle>
@@ -1740,7 +1743,7 @@ export function CommunityRemoteApp({
           <div
             role="dialog"
             aria-label={`${activeCommunity.name} Community View`}
-            className="fixed inset-0 z-40 flex flex-col bg-slate-50"
+            className="!mt-0 fixed inset-0 z-40 flex flex-col bg-background"
           >
             {/* Top Header Bar */}
             <div className="border-b border-slate-200 bg-primary-900 py-3 pl-2 pr-4 text-white shadow-sm sm:px-6 sm:py-3.5">
@@ -1896,8 +1899,8 @@ export function CommunityRemoteApp({
               <div className="flex-1 overflow-y-auto">
                 <div className="mx-auto w-full max-w-5xl space-y-4 p-4 sm:p-6">
                   {pendingMembers.length > 0 ? (
-                    <div className="rounded-2xl border border-yellow-200 bg-yellow-50/70 p-4 shadow-sm">
-                      <h4 className="text-xs font-bold uppercase tracking-wider text-yellow-900">
+                    <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 shadow-sm">
+                      <h4 className="text-xs font-bold uppercase tracking-wider text-amber-900">
                         Pending Join Requests ({pendingMembers.length})
                       </h4>
                       <div className="mt-2 space-y-2">
@@ -1945,7 +1948,7 @@ export function CommunityRemoteApp({
               <div className="mx-auto flex min-h-0 w-full max-w-5xl flex-1 flex-col bg-white shadow-sm sm:my-4 sm:rounded-2xl sm:border sm:border-slate-200">
                 {chatAccessError ? (
                   <div className="flex-1 p-4 sm:p-6">
-                    <div className="rounded-xl border border-yellow-200 bg-yellow-50 p-4 text-sm text-yellow-900">
+                    <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
                       <p className="font-semibold">
                         {activeCommunity.visibility === CommunityVisibility.PRIVATE
                           ? 'Private Community Chat Locked'
@@ -2080,7 +2083,7 @@ export function CommunityRemoteApp({
                 <ul
                   role="list"
                   aria-label="Community search results"
-                  className="divide-y divide-slate-100 bg-white"
+                  className="space-y-2.5 bg-slate-50/60 p-3 sm:p-4"
                 >
                   {filteredCommunities.map((community) => {
                     const isApproved =
@@ -2095,7 +2098,7 @@ export function CommunityRemoteApp({
                       <li
                         key={community.id}
                         onClick={() => void handleOpenCommunityHub(community)}
-                        className="flex cursor-pointer items-center justify-between gap-3 px-4 py-3.5 transition-colors hover:bg-slate-50 sm:px-5"
+                        className="flex cursor-pointer items-center justify-between gap-3 rounded-xl border border-slate-200/90 bg-white px-4 py-3.5 shadow-sm transition-colors hover:border-primary-200 hover:bg-slate-50 sm:px-5"
                       >
                         <div className="flex min-w-0 flex-1 items-center gap-3.5">
                           <Avatar
@@ -2160,7 +2163,7 @@ export function CommunityRemoteApp({
               <ul
                 role="list"
                 aria-label="My communities group list"
-                className="divide-y divide-slate-100 bg-white"
+                className="space-y-2.5 bg-slate-50/60 p-3 sm:p-4"
               >
                 {displayedCommunities.map((community) => {
                   const isPending =
@@ -2173,7 +2176,7 @@ export function CommunityRemoteApp({
                     <li
                       key={community.id}
                       onClick={() => void handleOpenCommunityHub(community)}
-                      className="flex cursor-pointer items-center gap-3.5 px-4 py-3.5 transition-colors hover:bg-slate-50 sm:px-5"
+                      className="flex cursor-pointer items-center gap-3.5 rounded-xl border border-slate-200/90 bg-white px-4 py-3.5 shadow-sm transition-colors hover:border-primary-200 hover:bg-slate-50 sm:px-5"
                     >
                       <Avatar
                         alt={community.name}

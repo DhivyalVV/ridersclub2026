@@ -130,6 +130,9 @@ describe('CommunityRemoteApp federated remote (Phase 6 Communities, Chat & Blogs
     fireEvent.click(screen.getByRole('button', { name: /Group options/i }));
     expect(screen.getByRole('menuitem', { name: /^Share$/i })).toBeTruthy();
     fireEvent.click(screen.getByRole('menuitem', { name: /^Share$/i }));
+    expect(
+      screen.getByRole('dialog', { name: /Western Ghats ADV Tourers Community View/i }).className,
+    ).toContain('!mt-0');
     fireEvent.click(screen.getByRole('button', { name: /Group options/i }));
     fireEvent.click(screen.getByRole('menuitem', { name: /^Leave$/i }));
 

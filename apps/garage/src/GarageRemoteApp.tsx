@@ -458,7 +458,7 @@ export function GarageRemoteApp(): React.JSX.Element {
               <div
                 role="dialog"
                 aria-label="Page information"
-                className="absolute right-0 top-full z-50 mt-1.5 w-72 rounded-xl border border-yellow-200 bg-yellow-50 p-3.5 text-xs leading-relaxed text-yellow-950 shadow-lg sm:w-80"
+                className="absolute right-0 top-full z-50 mt-1.5 w-72 rounded-xl border border-primary-200 bg-primary-50 p-3.5 text-xs leading-relaxed text-primary-950 shadow-lg sm:w-80"
               >
                 <p>
                   Maintain private vehicle records, odometer-validated service
@@ -475,7 +475,7 @@ export function GarageRemoteApp(): React.JSX.Element {
           </h1>
           <Button
             variant="secondary"
-            className="bg-yellow-100 text-yellow-950 hover:bg-yellow-200"
+            className="bg-white text-primary-900 hover:bg-primary-50"
             onClick={() => setShowAddVehicle((prev) => !prev)}
           >
             <Plus className="h-4 w-4" aria-hidden="true" />
@@ -518,7 +518,7 @@ export function GarageRemoteApp(): React.JSX.Element {
 
       {/* Add Vehicle Composer */}
       {showAddVehicle && (
-        <Card className="border-primary-200 bg-primary-50/30 shadow-sm">
+        <Card className="border-primary-200 bg-primary-50 shadow-sm">
           <CardHeader>
             <CardTitle className="text-lg">
               Add Vehicle to Private Garage
@@ -662,7 +662,7 @@ export function GarageRemoteApp(): React.JSX.Element {
               onClick={() => setSelectedVehicleId(vehicle.id)}
               className={`flex items-center gap-3 rounded-xl border px-4 py-3 text-left transition-all ${
                 isSelected
-                  ? 'border-primary-600 bg-primary-50/90 text-primary-950 shadow-sm ring-2 ring-primary-600/20'
+                  ? 'border-primary-600 bg-primary-50 text-primary-950 shadow-sm ring-2 ring-primary-600/20'
                   : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
               }`}
             >

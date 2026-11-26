@@ -52,7 +52,7 @@ export function EmptyState({
   icon,
 }: EmptyStateProps): React.JSX.Element {
   return (
-    <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-slate-300 bg-slate-50/70 p-8 text-center">
+    <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-slate-300 bg-white p-8 text-center">
       {icon && <div className="mb-3 text-primary-600">{icon}</div>}
       <h3 className="text-base font-semibold text-slate-900">{title}</h3>
       <p className="mt-1 max-w-md text-sm text-slate-600">{description}</p>
