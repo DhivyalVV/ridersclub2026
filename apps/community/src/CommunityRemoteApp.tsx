@@ -913,7 +913,6 @@ export function CommunityRemoteApp({
       pendingInviteSlugRef.current = null;
       void handleOpenCommunityHub(matched);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [communities, activeSection]);
 
   const handleSendCommunityMessage = async (e: React.FormEvent) => {
