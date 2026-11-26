@@ -34,7 +34,7 @@ describe('@ridersclub/ui design system components', () => {
     const handler = vi.fn();
     window.addEventListener(RIDERSCLUB_OPEN_CHAT_EVENT, handler);
 
-    render(<UserProfileCard user={sampleUser} contextLabel="Blog: Ladakh Prep" />);
+    render(<UserProfileCard user={sampleUser} contextLabel="News: Ladakh Prep" />);
 
     expect(screen.getByText('Aarav Sharma')).toBeTruthy();
     expect(screen.queryByText('@aarav_rides')).toBeNull();

@@ -165,15 +165,15 @@ export interface UpdateProfilePayload {
   allowDirectMessages?: DirectMessagePrivacy;
 }
 
-export interface BlogCommentItem {
+export interface NewsCommentItem {
   id: string;
-  blogId: string;
+  newsId: string;
   body: string;
   createdAt: string;
   author: PublicUserSummary;
 }
 
-export interface BlogPostItem {
+export interface NewsArticleItem {
   id: string;
   slug: string;
   title: string;
@@ -188,10 +188,10 @@ export interface BlogPostItem {
   createdAt: string;
   updatedAt: string;
   author: PublicUserSummary;
-  comments?: BlogCommentItem[];
+  comments?: NewsCommentItem[];
 }
 
-export interface CreateBlogPayload {
+export interface CreateNewsPayload {
   title: string;
   excerpt: string;
   content: string;
@@ -199,7 +199,7 @@ export interface CreateBlogPayload {
   tags: string[];
 }
 
-export interface UpdateBlogPayload {
+export interface UpdateNewsPayload {
   title?: string;
   excerpt?: string;
   content?: string;
@@ -549,7 +549,7 @@ export interface UpdateMarketplaceListingPayload {
 }
 
 export enum ModerationTargetType {
-  BLOG = 'BLOG',
+  NEWS = 'NEWS',
   COMMUNITY = 'COMMUNITY',
   USER = 'USER',
   HELP_REQUEST = 'HELP_REQUEST',

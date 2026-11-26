@@ -477,7 +477,7 @@ export function AdminModerationView({
                   >
                     <option value={ModerationTargetType.LISTING}>Marketplace Listing</option>
                     <option value={ModerationTargetType.MECHANIC}>Mechanic Provider</option>
-                    <option value={ModerationTargetType.BLOG}>News Article</option>
+                    <option value={ModerationTargetType.NEWS}>News Article</option>
                     <option value={ModerationTargetType.COMMUNITY}>Community Post</option>
                     <option value={ModerationTargetType.HELP_REQUEST}>Roadside Help Request</option>
                     <option value={ModerationTargetType.USER}>User Account</option>

@@ -88,7 +88,7 @@ enum ListingStatus {
 }
 
 enum ModerationTargetType {
-  BLOG
+  NEWS
   COMMUNITY
   USER
   HELP_REQUEST
@@ -118,9 +118,9 @@ model User {
   sessions                 UserSession[]
   blocksInitiated          UserBlock[]               @relation("BlocksInitiated")
   blocksReceived           UserBlock[]               @relation("BlocksReceived")
-  blogs                    Blog[]
-  blogComments             BlogComment[]
-  blogReactions            BlogReaction[]
+  newsArticles             NewsArticle[]
+  newsComments             NewsComment[]
+  newsReactions            NewsReaction[]
   communitiesFounded       Community[]               @relation("CommunityFounder")
   communityMemberships     CommunityMember[]
   communityMessages        CommunityMessage[]
@@ -204,7 +204,7 @@ model UserBlock {
   @@map("user_blocks")
 }
 
-model Blog {
+model NewsArticle {
   id              String         @id @default(uuid()) @db.Uuid
   authorId        String         @db.Uuid
   slug            String         @unique
@@ -218,40 +218,40 @@ model Blog {
   updatedAt       DateTime       @updatedAt
 
   author          User           @relation(fields: [authorId], references: [id], onDelete: Cascade)
-  comments        BlogComment[]
-  reactions       BlogReaction[]
+  comments        NewsComment[]
+  reactions       NewsReaction[]
 
   @@index([authorId])
   @@index([createdAt])
-  @@map("blogs")
+  @@map("news_articles")
 }
 
-model BlogComment {
+model NewsComment {
   id        String   @id @default(uuid()) @db.Uuid
-  blogId    String   @db.Uuid
+  newsId    String   @db.Uuid
   authorId  String   @db.Uuid
   body      String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  blog      Blog     @relation(fields: [blogId], references: [id], onDelete: Cascade)
-  author    User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  news      NewsArticle @relation(fields: [newsId], references: [id], onDelete: Cascade)
+  author    User        @relation(fields: [authorId], references: [id], onDelete: Cascade)
 
-  @@index([blogId, createdAt])
-  @@map("blog_comments")
+  @@index([newsId, createdAt])
+  @@map("news_comments")
 }
 
-model BlogReaction {
+model NewsReaction {
   id        String   @id @default(uuid()) @db.Uuid
-  blogId    String   @db.Uuid
+  newsId    String   @db.Uuid
   userId    String   @db.Uuid
   createdAt DateTime @default(now())
 
-  blog      Blog     @relation(fields: [blogId], references: [id], onDelete: Cascade)
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  news      NewsArticle @relation(fields: [newsId], references: [id], onDelete: Cascade)
+  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@unique([blogId, userId])
-  @@map("blog_reactions")
+  @@unique([newsId, userId])
+  @@map("news_reactions")
 }
 
 model Community {

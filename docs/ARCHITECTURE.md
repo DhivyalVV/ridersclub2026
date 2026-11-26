@@ -10,7 +10,7 @@ RidersClub is an enterprise mobile-first community, safety, service, and commerc
 | :--- | :--- | :--- | :--- |
 | `@ridersclub/api` | `apps/api` | `:4000` | NestJS 10 Modular Monolith REST + SSE Backend (`/api/v1/*`) |
 | `@ridersclub/shell` | `apps/shell` | `:5000` | Host App (Global Nav, Auth/Profile, 1:1 Direct Chat Drawer, `/admin` Moderation Console) |
-| `@ridersclub/community` | `apps/community` | `:5001` | Federated Remote — Topic/City Communities & Rider Blogs |
+| `@ridersclub/community` | `apps/community` | `:5001` | Federated Remote — Topic/City Communities & Rider News |
 | `@ridersclub/rides` | `apps/rides` | `:5002` | Federated Remote — Group Ride Organization, Capacity & Route Waypoints |
 | `@ridersclub/help` | `apps/help` | `:5003` | Federated Remote — Roadside Assistance, Explicit Location Consent & Peer Offers |
 | `@ridersclub/mechanics` | `apps/mechanics` | `:5004` | Federated Remote — Mechanics Directory, Phone Privacy & Admin Verification |
@@ -24,8 +24,8 @@ RidersClub is an enterprise mobile-first community, safety, service, and commerc
 
 ## 2. Architecture Decision Records (ADRs)
 
-- **ADR-001 (Modular Monolith First)**: Build `@ridersclub/api` as a cleanly partitioned NestJS modular monolith (`AuthModule`, `ProfilesModule`, `BlogsModule`, `CommunitiesModule`, `MessagingModule`, `RidesModule`, `HelpModule`, `MechanicsModule`, `GarageModule`, `MarketplaceModule`, `AdminModule`, `HealthModule`) backed by Prisma and PostgreSQL 16 so domain transactions remain ACID-compliant while preserving clean module boundaries for future extraction.
-- **ADR-002 (Co-located Blogs & Communities)**: Co-locate Rider Blogs and Communities in `apps/community` (`:5001`) so rich post authoring, reaction counters, and moderation primitives are shared without duplicate bundle overhead.
+- **ADR-001 (Modular Monolith First)**: Build `@ridersclub/api` as a cleanly partitioned NestJS modular monolith (`AuthModule`, `ProfilesModule`, `NewsModule`, `CommunitiesModule`, `MessagingModule`, `RidesModule`, `HelpModule`, `MechanicsModule`, `GarageModule`, `MarketplaceModule`, `AdminModule`, `HealthModule`) backed by Prisma and PostgreSQL 16 so domain transactions remain ACID-compliant while preserving clean module boundaries for future extraction.
+- **ADR-002 (Co-located News & Communities)**: Co-locate Rider News and Communities in `apps/community` (`:5001`) so rich post authoring, reaction counters, and moderation primitives are shared without duplicate bundle overhead.
 - **ADR-003 (Canonical 1:1 Direct Messaging & Cross-MFE Event Bus)**: Host the global slide-over 1:1 Direct Chat Drawer in `apps/shell` (`:5000`). Any federated remote triggers a conversation via `openDirectChatWithUser(targetUser, contextLabel)` in `@ridersclub/ui`. Conversations enforce a canonical sorted `participantPairKey` (`min(userA, userB):max(userA, userB)`) unique constraint in PostgreSQL so duplicate threads can never be created between the same two riders.
 - **ADR-004 (Unified Design System CSS Injection)**: Keep `@ridersclub/ui/styles.css` imported once at the host entry (`apps/shell/src/main.tsx`) and configure `apps/shell/tailwind.config.mjs` to scan all sibling federated remote `src/**/*.{ts,tsx}` files. This prevents duplicate `<style>` tags from overriding responsive layout utilities such as `.md:flex`.
 - **ADR-005 (Roadside Help Explicit Consent & Automatic GPS Redaction)**: Require explicit opt-in location consent before attaching coordinates to a help request, display a prominent non-emergency disclaimer (`112` / `911`), and automatically redact `latitude`/`longitude` to `null` as soon as a request transitions to `RESOLVED` or `CANCELLED`.
@@ -37,7 +37,7 @@ RidersClub is an enterprise mobile-first community, safety, service, and commerc
 | :--- | :--- | :--- | :--- |
 | `@ridersclub/api` | `apps/api` | `:4000` | NestJS 10 Modular Monolith REST + SSE Backend (`/api/v1/*`) |
 | `@ridersclub/shell` | `apps/shell` | `:5000` | Host App (Global Nav, Auth/Profile, 1:1 Direct Chat Drawer, `/admin` Moderation Console) |
-| `@ridersclub/community` | `apps/community` | `:5001` | Federated Remote — Topic/City Communities & Rider Blogs |
+| `@ridersclub/community` | `apps/community` | `:5001` | Federated Remote — Topic/City Communities & Rider News |
 | `@ridersclub/rides` | `apps/rides` | `:5002` | Federated Remote — Group Ride Organization, Capacity & Route Waypoints |
 | `@ridersclub/help` | `apps/help` | `:5003` | Federated Remote — Roadside Assistance, Explicit Location Consent & Peer Offers |
 | `@ridersclub/mechanics` | `apps/mechanics` | `:5004` | Federated Remote — Mechanics Directory, Phone Privacy & Admin Verification |
@@ -51,8 +51,8 @@ RidersClub is an enterprise mobile-first community, safety, service, and commerc
 
 ## 2. Architecture Decision Records (ADRs)
 
-- **ADR-001 (Modular Monolith First)**: Build `@ridersclub/api` as a cleanly partitioned NestJS modular monolith (`AuthModule`, `ProfilesModule`, `BlogsModule`, `CommunitiesModule`, `MessagingModule`, `RidesModule`, `HelpModule`, `MechanicsModule`, `GarageModule`, `MarketplaceModule`, `AdminModule`, `HealthModule`) backed by Prisma and PostgreSQL 16 so domain transactions remain ACID-compliant while preserving clean module boundaries for future extraction.
-- **ADR-002 (Co-located Blogs & Communities)**: Co-locate Rider Blogs and Communities in `apps/community` (`:5001`) so rich post authoring, reaction counters, and moderation primitives are shared without duplicate bundle overhead.
+- **ADR-001 (Modular Monolith First)**: Build `@ridersclub/api` as a cleanly partitioned NestJS modular monolith (`AuthModule`, `ProfilesModule`, `NewsModule`, `CommunitiesModule`, `MessagingModule`, `RidesModule`, `HelpModule`, `MechanicsModule`, `GarageModule`, `MarketplaceModule`, `AdminModule`, `HealthModule`) backed by Prisma and PostgreSQL 16 so domain transactions remain ACID-compliant while preserving clean module boundaries for future extraction.
+- **ADR-002 (Co-located News & Communities)**: Co-locate Rider News and Communities in `apps/community` (`:5001`) so rich post authoring, reaction counters, and moderation primitives are shared without duplicate bundle overhead.
 - **ADR-003 (Canonical 1:1 Direct Messaging & Cross-MFE Event Bus)**: Host the global slide-over 1:1 Direct Chat Drawer in `apps/shell` (`:5000`). Any federated remote triggers a conversation via `openDirectChatWithUser(targetUser, contextLabel)` in `@ridersclub/ui`. Conversations enforce a canonical sorted `participantPairKey` (`min(userA, userB):max(userA, userB)`) unique constraint in PostgreSQL so duplicate threads can never be created between the same two riders.
 - **ADR-004 (Unified Design System CSS Injection)**: Keep `@ridersclub/ui/styles.css` imported once at the host entry (`apps/shell/src/main.tsx`) and configure `apps/shell/tailwind.config.mjs` to scan all sibling federated remote `src/**/*.{ts,tsx}` files. This prevents duplicate `<style>` tags from overriding responsive layout utilities such as `.md:flex`.
 - **ADR-005 (Roadside Help Explicit Consent & Automatic GPS Redaction)**: Require explicit opt-in location consent before attaching coordinates to a help request, display a prominent non-emergency disclaimer (`112` / `911`), and automatically redact `latitude`/`longitude` to `null` as soon as a request transitions to `RESOLVED` or `CANCELLED`.

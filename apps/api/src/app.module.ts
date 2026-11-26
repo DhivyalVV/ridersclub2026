@@ -3,7 +3,7 @@ import { ConfigModule } from '@nestjs/config';
 import { PrismaModule } from './prisma/prisma.module';
 import { HealthModule } from './health/health.module';
 import { AuthModule } from './auth/auth.module';
-import { BlogsModule } from './blogs/blogs.module';
+import { NewsModule } from './news/news.module';
 import { CommunitiesModule } from './communities/communities.module';
 import { MessagingModule } from './messaging/messaging.module';
 import { ProfilesModule } from './profiles/profiles.module';
@@ -23,7 +23,7 @@ import { AdminModule } from './admin/admin.module';
     PrismaModule,
     AuthModule,
     ProfilesModule,
-    BlogsModule,
+    NewsModule,
     CommunitiesModule,
     MessagingModule,
     RidesModule,

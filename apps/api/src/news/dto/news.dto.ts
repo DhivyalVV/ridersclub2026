@@ -8,7 +8,7 @@ import {
   MinLength,
 } from 'class-validator';
 
-export class CreateBlogDto {
+export class CreateNewsDto {
   @ApiProperty({ example: 'High-Altitude Braking & Clutch Care Before a Spiti Circuit' })
   @IsString()
   @MinLength(2)
@@ -49,7 +49,7 @@ export class CreateBlogDto {
   tags?: string[];
 }
 
-export class UpdateBlogDto {
+export class UpdateNewsDto {
   @ApiPropertyOptional({ example: 'Updated High-Altitude Braking & Clutch Guide' })
   @IsOptional()
   @IsString()
@@ -85,7 +85,7 @@ export class UpdateBlogDto {
   tags?: string[];
 }
 
-export class CreateBlogCommentDto {
+export class CreateNewsCommentDto {
   @ApiProperty({
     example: 'Switched to DOT 5.1 before my Zanskar run and had zero lever sponge on Singge La!',
   })
@@ -94,4 +94,3 @@ export class CreateBlogCommentDto {
   @MaxLength(1500)
   body!: string;
 }
-
