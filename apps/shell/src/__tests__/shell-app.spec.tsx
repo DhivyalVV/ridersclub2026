@@ -53,7 +53,7 @@ const MOCK_ADMIN_USER: AuthenticatedUserAccount = {
 function MockFederatedCommunity({
   initialSection = 'communities',
 }: {
-  initialSection?: 'communities' | 'news' | 'blogs';
+  initialSection?: 'communities' | 'news';
 }): React.JSX.Element {
   return (
     <div>
@@ -72,7 +72,7 @@ function MockFederatedCommunity({
               role: UserRole.USER,
               canReceiveDirectMessage: true,
             },
-            'Blog: Valve Clearance Guide',
+            'News: Valve Clearance Guide',
           )
         }
       >
@@ -113,7 +113,7 @@ describe('ShellApp host micro-frontend & Phase 4 multi-remote orchestration', ()
 
     expect(screen.getByRole('dialog', { name: /Individual Direct Chat Drawer/i })).toBeTruthy();
     expect(screen.getByText('Chatting with Ananya Verma')).toBeTruthy();
-    expect(screen.getByText(/Initiated from Blog: Valve Clearance Guide/i)).toBeTruthy();
+    expect(screen.getByText(/Initiated from News: Valve Clearance Guide/i)).toBeTruthy();
   });
 
   it('supports direct URL navigation across all 6 federated remotes (Rides, Help, Mechanics, Garage, Marketplace, News) once signed in', async () => {

@@ -23,8 +23,8 @@ import {
   CommunityVisibility,
   UserRole,
   type AuthenticatedUserAccount,
-  type BlogCommentItem,
-  type BlogPostItem,
+  type NewsCommentItem,
+  type NewsArticleItem,
   type CommunityChatMessageItem,
   type CommunityDetailResponse,
   type CommunityItem,
@@ -46,7 +46,7 @@ import {
 } from '@ridersclub/ui';
 
 export interface CommunityRemoteAppProps {
-  initialSection?: 'communities' | 'news' | 'blogs';
+  initialSection?: 'communities' | 'news';
 }
 
 const API_BASE_URL = ((import.meta as unknown as { env?: Record<string, string | undefined> }).env?.VITE_API_BASE_URL) || 'http://localhost:4000/api/v1';
@@ -123,9 +123,9 @@ const INITIAL_COMMUNITIES: CommunityItem[] = [
   },
 ];
 
-const INITIAL_BLOGS: BlogPostItem[] = [
+const INITIAL_NEWS: NewsArticleItem[] = [
   {
-    id: 'blog-1',
+    id: 'news-1',
     slug: 'high-altitude-braking-clutch-care-spiti',
     title: 'High-Altitude Braking & Clutch Care Before a Spiti Circuit',
     excerpt:
@@ -154,7 +154,7 @@ const INITIAL_BLOGS: BlogPostItem[] = [
     comments: [
       {
         id: 'comment-sample-1',
-        blogId: 'blog-1',
+        newsId: 'news-1',
         body: 'Flushed with fresh DOT 5.1 right before our Zanskar run—zero lever sponge even after descending Singge La!',
         createdAt: new Date().toISOString(),
         author: {
@@ -171,7 +171,7 @@ const INITIAL_BLOGS: BlogPostItem[] = [
     ],
   },
   {
-    id: 'blog-2',
+    id: 'news-2',
     slug: 'pre-purchase-inspection-used-dual-sport-motorcycles',
     title: 'Pre-Purchase Inspection Checklist for Used Dual-Sport Motorcycles',
     excerpt:
@@ -237,10 +237,10 @@ export function CommunityRemoteApp({
   initialSection = 'communities',
 }: CommunityRemoteAppProps): React.JSX.Element {
   const activeSection: 'communities' | 'news' =
-    initialSection === 'news' || initialSection === 'blogs' ? 'news' : 'communities';
+    initialSection === 'news' ? 'news' : 'communities';
   const [searchQuery, setSearchQuery] = React.useState('');
   const [communities, setCommunities] = React.useState<CommunityItem[]>(INITIAL_COMMUNITIES);
-  const [blogs, setBlogs] = React.useState<BlogPostItem[]>(INITIAL_BLOGS);
+  const [newsArticles, setNewsArticles] = React.useState<NewsArticleItem[]>(INITIAL_NEWS);
   const [statusBanner, setStatusBanner] = React.useState<string | null>(null);
   const [showHeaderInfo, setShowHeaderInfo] = React.useState(false);
 
@@ -316,34 +316,34 @@ export function CommunityRemoteApp({
     }
   }, [lastMessageByCommunity]);
 
-  // Create / Edit News (Blog) Modal State (Admin Only)
-  const [showBlogComposer, setShowBlogComposer] = React.useState(false);
-  const [editingBlogId, setEditingBlogId] = React.useState<string | null>(null);
-  const [blogTitle, setBlogTitle] = React.useState('');
-  const [blogExcerpt, setBlogExcerpt] = React.useState('');
-  const [blogContent, setBlogContent] = React.useState('');
-  const [blogImageUrl, setBlogImageUrl] = React.useState('');
-  const [blogTagsInput, setBlogTagsInput] = React.useState('Touring Prep, Maintenance');
+  // Create / Edit News Modal State (Admin Only)
+  const [showNewsComposer, setShowNewsComposer] = React.useState(false);
+  const [editingNewsId, setEditingNewsId] = React.useState<string | null>(null);
+  const [newsTitle, setNewsTitle] = React.useState('');
+  const [newsExcerpt, setNewsExcerpt] = React.useState('');
+  const [newsContent, setNewsContent] = React.useState('');
+  const [newsImageUrl, setNewsImageUrl] = React.useState('');
+  const [newsTagsInput, setNewsTagsInput] = React.useState('Touring Prep, Maintenance');
 
   // Active Full News Page State
-  const [selectedBlog, setSelectedBlog] = React.useState<BlogPostItem | null>(null);
+  const [selectedArticle, setSelectedArticle] = React.useState<NewsArticleItem | null>(null);
   const [commentDraft, setCommentDraft] = React.useState('');
 
   React.useEffect(() => {
     setSearchQuery('');
     setShowHeaderInfo(false);
-    setSelectedBlog(null);
-    setShowBlogComposer(false);
+    setSelectedArticle(null);
+    setShowNewsComposer(false);
   }, [initialSection]);
 
-  const loadLiveCommunitiesAndBlogs = React.useCallback(async () => {
+  const loadLiveCommunitiesAndNews = React.useCallback(async () => {
     const token = getStoredToken();
     const headers: Record<string, string> = token
       ? { Authorization: `Bearer ${token}` }
       : {};
 
     try {
-      const [commRes, blogsRes] = await Promise.all([
+      const [commRes, newsRes] = await Promise.all([
         fetch(`${API_BASE_URL}/communities`, { headers, credentials: 'include' }),
         fetch(`${API_BASE_URL}/news?page=1&limit=20`, { headers, credentials: 'include' }),
       ]);
@@ -364,10 +364,10 @@ export function CommunityRemoteApp({
         }
       }
 
-      if (blogsRes.ok) {
-        const blogsData = (await blogsRes.json()) as PaginatedResponse<BlogPostItem>;
-        if (blogsData?.items && blogsData.items.length > 0) {
-          setBlogs(blogsData.items);
+      if (newsRes.ok) {
+        const newsData = (await newsRes.json()) as PaginatedResponse<NewsArticleItem>;
+        if (newsData?.items && newsData.items.length > 0) {
+          setNewsArticles(newsData.items);
         }
       }
     } catch {
@@ -376,8 +376,8 @@ export function CommunityRemoteApp({
   }, []);
 
   React.useEffect(() => {
-    void loadLiveCommunitiesAndBlogs();
-  }, [loadLiveCommunitiesAndBlogs]);
+    void loadLiveCommunitiesAndNews();
+  }, [loadLiveCommunitiesAndNews]);
 
   const activeCommunityIdRef = React.useRef<string | null>(null);
   React.useEffect(() => {
@@ -1053,29 +1053,29 @@ export function CommunityRemoteApp({
     setStatusBanner(`Copied group invite link for "${community.name}".`);
   };
 
-  const openNewBlogComposer = () => {
+  const openNewNewsComposer = () => {
     const user = getStoredUser();
     if (user?.role !== UserRole.ADMIN) return;
-    setEditingBlogId(null);
-    setBlogTitle('');
-    setBlogExcerpt('');
-    setBlogContent('');
-    setBlogImageUrl('');
-    setBlogTagsInput('Touring Prep, Maintenance');
-    setShowBlogComposer(true);
+    setEditingNewsId(null);
+    setNewsTitle('');
+    setNewsExcerpt('');
+    setNewsContent('');
+    setNewsImageUrl('');
+    setNewsTagsInput('Touring Prep, Maintenance');
+    setShowNewsComposer(true);
   };
 
-  const openEditBlogComposer = (blog: BlogPostItem) => {
+  const openEditNewsComposer = (article: NewsArticleItem) => {
     const user = getStoredUser();
     if (user?.role !== UserRole.ADMIN) return;
-    setEditingBlogId(blog.id);
-    setBlogTitle(blog.title);
-    setBlogExcerpt(blog.excerpt);
-    setBlogContent(blog.content);
-    setBlogImageUrl(blog.imageUrl ?? '');
-    setBlogTagsInput(blog.tags.join(', '));
-    setSelectedBlog(null);
-    setShowBlogComposer(true);
+    setEditingNewsId(article.id);
+    setNewsTitle(article.title);
+    setNewsExcerpt(article.excerpt);
+    setNewsContent(article.content);
+    setNewsImageUrl(article.imageUrl ?? '');
+    setNewsTagsInput(article.tags.join(', '));
+    setSelectedArticle(null);
+    setShowNewsComposer(true);
   };
 
   const handleNewsImageFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -1084,24 +1084,24 @@ export function CommunityRemoteApp({
     const reader = new FileReader();
     reader.onload = () => {
       if (typeof reader.result === 'string') {
-        setBlogImageUrl(reader.result);
+        setNewsImageUrl(reader.result);
       }
     };
     reader.readAsDataURL(file);
   };
 
-  const handleSaveBlog = async (e: React.FormEvent) => {
+  const handleSaveNews = async (e: React.FormEvent) => {
     e.preventDefault();
     const currentUser = getStoredUser();
     if (currentUser?.role !== UserRole.ADMIN) return;
 
-    const trimmedTitle = blogTitle.trim();
-    const trimmedExcerpt = blogExcerpt.trim();
-    const trimmedContent = blogContent.trim();
-    const trimmedImageUrl = blogImageUrl.trim() || DEFAULT_NEWS_HEADER_IMAGE;
+    const trimmedTitle = newsTitle.trim();
+    const trimmedExcerpt = newsExcerpt.trim();
+    const trimmedContent = newsContent.trim();
+    const trimmedImageUrl = newsImageUrl.trim() || DEFAULT_NEWS_HEADER_IMAGE;
     if (!trimmedTitle || !trimmedExcerpt || !trimmedContent) return;
 
-    const parsedTags = blogTagsInput
+    const parsedTags = newsTagsInput
       .split(',')
       .map((t) => t.trim())
       .filter(Boolean);
@@ -1110,10 +1110,10 @@ export function CommunityRemoteApp({
 
     if (token) {
       try {
-        const url = editingBlogId
-          ? `${API_BASE_URL}/news/${editingBlogId}`
+        const url = editingNewsId
+          ? `${API_BASE_URL}/news/${editingNewsId}`
           : `${API_BASE_URL}/news`;
-        const method = editingBlogId ? 'PATCH' : 'POST';
+        const method = editingNewsId ? 'PATCH' : 'POST';
 
         const res = await fetch(url, {
           method,
@@ -1131,19 +1131,19 @@ export function CommunityRemoteApp({
         });
 
         if (res.ok) {
-          const saved = (await res.json()) as BlogPostItem;
-          const normalizedSaved: BlogPostItem = {
+          const saved = (await res.json()) as NewsArticleItem;
+          const normalizedSaved: NewsArticleItem = {
             ...saved,
             imageUrl: saved.imageUrl || trimmedImageUrl,
           };
-          setBlogs((prev) =>
-            editingBlogId
-              ? prev.map((b) => (b.id === editingBlogId ? normalizedSaved : b))
+          setNewsArticles((prev) =>
+            editingNewsId
+              ? prev.map((b) => (b.id === editingNewsId ? normalizedSaved : b))
               : [normalizedSaved, ...prev],
           );
-          setShowBlogComposer(false);
+          setShowNewsComposer(false);
           setStatusBanner(
-            editingBlogId
+            editingNewsId
               ? `Updated news "${normalizedSaved.title}".`
               : `Published new news "${normalizedSaved.title}".`,
           );
@@ -1159,10 +1159,10 @@ export function CommunityRemoteApp({
       Math.ceil(trimmedContent.split(/\s+/).length / 180),
     );
 
-    if (editingBlogId) {
-      setBlogs((prev) =>
+    if (editingNewsId) {
+      setNewsArticles((prev) =>
         prev.map((b) =>
-          b.id === editingBlogId
+          b.id === editingNewsId
             ? {
                 ...b,
                 title: trimmedTitle,
@@ -1178,8 +1178,8 @@ export function CommunityRemoteApp({
       );
       setStatusBanner(`Updated news "${trimmedTitle}".`);
     } else {
-      const createdBlog: BlogPostItem = {
-        id: `blog-local-${Date.now()}`,
+      const createdArticle: NewsArticleItem = {
+        id: `news-local-${Date.now()}`,
         slug: trimmedTitle.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
         title: trimmedTitle,
         excerpt: trimmedExcerpt,
@@ -1204,21 +1204,21 @@ export function CommunityRemoteApp({
         },
         comments: [],
       };
-      setBlogs((prev) => [createdBlog, ...prev]);
-      setStatusBanner(`Published new news "${createdBlog.title}".`);
+      setNewsArticles((prev) => [createdArticle, ...prev]);
+      setStatusBanner(`Published new news "${createdArticle.title}".`);
     }
 
-    setShowBlogComposer(false);
+    setShowNewsComposer(false);
   };
 
-  const handleDeleteBlog = async (blog: BlogPostItem) => {
+  const handleDeleteNews = async (article: NewsArticleItem) => {
     const currentUser = getStoredUser();
     if (currentUser?.role !== UserRole.ADMIN) return;
 
     const token = getStoredToken();
     if (token) {
       try {
-        await fetch(`${API_BASE_URL}/news/${blog.id}`, {
+        await fetch(`${API_BASE_URL}/news/${article.id}`, {
           method: 'DELETE',
           headers: { Authorization: `Bearer ${token}` },
         });
@@ -1227,47 +1227,47 @@ export function CommunityRemoteApp({
       }
     }
 
-    setBlogs((prev) => prev.filter((b) => b.id !== blog.id));
-    if (selectedBlog?.id === blog.id) {
-      setSelectedBlog(null);
+    setNewsArticles((prev) => prev.filter((b) => b.id !== article.id));
+    if (selectedArticle?.id === article.id) {
+      setSelectedArticle(null);
     }
-    setStatusBanner(`Deleted news "${blog.title}".`);
+    setStatusBanner(`Deleted news "${article.title}".`);
   };
 
-  const handleOpenBlogReader = async (blog: BlogPostItem) => {
-    setSelectedBlog(blog);
+  const handleOpenNewsReader = async (article: NewsArticleItem) => {
+    setSelectedArticle(article);
     const token = getStoredToken();
     const headers: Record<string, string> = token
       ? { Authorization: `Bearer ${token}` }
       : {};
 
     try {
-      const res = await fetch(`${API_BASE_URL}/news/${blog.id}`, { headers });
+      const res = await fetch(`${API_BASE_URL}/news/${article.id}`, { headers });
       if (res.ok) {
-        const full = (await res.json()) as BlogPostItem;
-        setSelectedBlog(full);
+        const full = (await res.json()) as NewsArticleItem;
+        setSelectedArticle(full);
       }
     } catch {
-      // Keep local blog object
+      // Keep local news article object
     }
   };
 
-  const handleToggleBlogReaction = async (blog: BlogPostItem) => {
+  const handleToggleNewsReaction = async (article: NewsArticleItem) => {
     const token = getStoredToken();
     if (token) {
       try {
-        const res = await fetch(`${API_BASE_URL}/news/${blog.id}/reactions/toggle`, {
+        const res = await fetch(`${API_BASE_URL}/news/${article.id}/reactions/toggle`, {
           method: 'POST',
           headers: { Authorization: `Bearer ${token}` },
         });
         if (res.ok) {
           const data = (await res.json()) as {
-            blogId: string;
+            newsId: string;
             liked: boolean;
             likesCount: number;
           };
-          const updateFn = (item: BlogPostItem): BlogPostItem =>
-            item.id === blog.id
+          const updateFn = (item: NewsArticleItem): NewsArticleItem =>
+            item.id === article.id
               ? {
                   ...item,
                   isLikedByViewer: data.liked,
@@ -1275,8 +1275,8 @@ export function CommunityRemoteApp({
                 }
               : item;
 
-          setBlogs((prev) => prev.map(updateFn));
-          setSelectedBlog((prev) => (prev ? updateFn(prev) : null));
+          setNewsArticles((prev) => prev.map(updateFn));
+          setSelectedArticle((prev) => (prev ? updateFn(prev) : null));
           return;
         }
       } catch {
@@ -1284,20 +1284,20 @@ export function CommunityRemoteApp({
       }
     }
 
-    const nextLiked = !blog.isLikedByViewer;
-    const nextCount = nextLiked ? blog.likesCount + 1 : Math.max(0, blog.likesCount - 1);
-    const updateFn = (item: BlogPostItem): BlogPostItem =>
-      item.id === blog.id
+    const nextLiked = !article.isLikedByViewer;
+    const nextCount = nextLiked ? article.likesCount + 1 : Math.max(0, article.likesCount - 1);
+    const updateFn = (item: NewsArticleItem): NewsArticleItem =>
+      item.id === article.id
         ? { ...item, isLikedByViewer: nextLiked, likesCount: nextCount }
         : item;
 
-    setBlogs((prev) => prev.map(updateFn));
-    setSelectedBlog((prev) => (prev ? updateFn(prev) : null));
+    setNewsArticles((prev) => prev.map(updateFn));
+    setSelectedArticle((prev) => (prev ? updateFn(prev) : null));
   };
 
-  const handleAddBlogComment = async (e: React.FormEvent) => {
+  const handleAddNewsComment = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedBlog) return;
+    if (!selectedArticle) return;
     const trimmed = commentDraft.trim();
     if (!trimmed) return;
 
@@ -1306,7 +1306,7 @@ export function CommunityRemoteApp({
 
     if (token) {
       try {
-        const res = await fetch(`${API_BASE_URL}/news/${selectedBlog.id}/comments`, {
+        const res = await fetch(`${API_BASE_URL}/news/${selectedArticle.id}/comments`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -1316,8 +1316,8 @@ export function CommunityRemoteApp({
         });
 
         if (res.ok) {
-          const created = (await res.json()) as BlogCommentItem;
-          setSelectedBlog((prev) =>
+          const created = (await res.json()) as NewsCommentItem;
+          setSelectedArticle((prev) =>
             prev
               ? {
                   ...prev,
@@ -1326,9 +1326,9 @@ export function CommunityRemoteApp({
                 }
               : null,
           );
-          setBlogs((prev) =>
+          setNewsArticles((prev) =>
             prev.map((b) =>
-              b.id === selectedBlog.id
+              b.id === selectedArticle.id
                 ? { ...b, commentsCount: b.commentsCount + 1 }
                 : b,
             ),
@@ -1341,9 +1341,9 @@ export function CommunityRemoteApp({
       }
     }
 
-    const fallbackComment: BlogCommentItem = {
+    const fallbackComment: NewsCommentItem = {
       id: `comment-local-${Date.now()}`,
-      blogId: selectedBlog.id,
+      newsId: selectedArticle.id,
       body: trimmed,
       createdAt: new Date().toISOString(),
       author: {
@@ -1358,7 +1358,7 @@ export function CommunityRemoteApp({
       },
     };
 
-    setSelectedBlog((prev) =>
+    setSelectedArticle((prev) =>
       prev
         ? {
             ...prev,
@@ -1367,9 +1367,9 @@ export function CommunityRemoteApp({
           }
         : null,
     );
-    setBlogs((prev) =>
+    setNewsArticles((prev) =>
       prev.map((b) =>
-        b.id === selectedBlog.id
+        b.id === selectedArticle.id
           ? { ...b, commentsCount: b.commentsCount + 1 }
           : b,
       ),
@@ -1391,7 +1391,7 @@ export function CommunityRemoteApp({
     >
       {/* Header Banner (hidden when a full-screen community chat or full news page is open) */}
       {!(activeSection === 'communities' && activeCommunity) &&
-        !(activeSection === 'news' && selectedBlog) && (
+        !(activeSection === 'news' && selectedArticle) && (
         <div className="relative rounded-2xl bg-gradient-to-r from-primary-900 via-primary-800 to-primary-700 px-5 py-4 pr-12 text-white shadow-md sm:px-6 sm:pr-14">
           <div className="absolute right-2.5 top-2.5">
             <Button
@@ -1448,7 +1448,7 @@ export function CommunityRemoteApp({
                 <Button
                   variant="secondary"
                   className="bg-white text-primary-900 hover:bg-primary-50"
-                  onClick={openNewBlogComposer}
+                  onClick={openNewNewsComposer}
                 >
                   <BookOpen className="h-4 w-4" aria-hidden="true" />
                   Publish News
@@ -1594,12 +1594,12 @@ export function CommunityRemoteApp({
       ) : null}
 
       {/* Create / Edit News Composer Panel (Admin Only) */}
-      {showBlogComposer && isAdmin ? (
+      {showNewsComposer && isAdmin ? (
         <Card className="border-primary-200 bg-primary-50">
           <CardHeader className="flex flex-row items-start justify-between">
             <div>
               <CardTitle>
-                {editingBlogId ? 'Edit News Article' : 'Publish Official Rider News'}
+                {editingNewsId ? 'Edit News Article' : 'Publish Official Rider News'}
               </CardTitle>
               <CardDescription>
                 Upload or link a header image, write a concise description for the news card, and
@@ -1610,43 +1610,43 @@ export function CommunityRemoteApp({
               size="sm"
               variant="ghost"
               aria-label="Close news composer"
-              onClick={() => setShowBlogComposer(false)}
+              onClick={() => setShowNewsComposer(false)}
             >
               <X className="h-4 w-4" />
             </Button>
           </CardHeader>
           <CardContent>
-            <form onSubmit={(e) => void handleSaveBlog(e)} className="space-y-4">
+            <form onSubmit={(e) => void handleSaveNews(e)} className="space-y-4">
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div>
                   <label
-                    htmlFor="blog-title-input"
+                    htmlFor="news-title-input"
                     className="block text-xs font-semibold uppercase tracking-wider text-slate-600"
                   >
                     News Headline / Title
                   </label>
                   <input
-                    id="blog-title-input"
+                    id="news-title-input"
                     type="text"
                     required
-                    value={blogTitle}
-                    onChange={(e) => setBlogTitle(e.target.value)}
+                    value={newsTitle}
+                    onChange={(e) => setNewsTitle(e.target.value)}
                     placeholder="e.g., Monsoon Chain & Sprocket Care for Coastal Rides"
                     className="mt-1 h-10 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm"
                   />
                 </div>
                 <div>
                   <label
-                    htmlFor="blog-tags-input"
+                    htmlFor="news-tags-input"
                     className="block text-xs font-semibold uppercase tracking-wider text-slate-600"
                   >
                     Tags (comma-separated)
                   </label>
                   <input
-                    id="blog-tags-input"
+                    id="news-tags-input"
                     type="text"
-                    value={blogTagsInput}
-                    onChange={(e) => setBlogTagsInput(e.target.value)}
+                    value={newsTagsInput}
+                    onChange={(e) => setNewsTagsInput(e.target.value)}
                     placeholder="Maintenance, Monsoon, Safety"
                     className="mt-1 h-10 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm"
                   />
@@ -1655,29 +1655,29 @@ export function CommunityRemoteApp({
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div>
                   <label
-                    htmlFor="blog-image-input"
+                    htmlFor="news-image-input"
                     className="block text-xs font-semibold uppercase tracking-wider text-slate-600"
                   >
                     Header Image URL
                   </label>
                   <input
-                    id="blog-image-input"
+                    id="news-image-input"
                     type="text"
-                    value={blogImageUrl}
-                    onChange={(e) => setBlogImageUrl(e.target.value)}
+                    value={newsImageUrl}
+                    onChange={(e) => setNewsImageUrl(e.target.value)}
                     placeholder="https://images.unsplash.com/..."
                     className="mt-1 h-10 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm"
                   />
                 </div>
                 <div>
                   <label
-                    htmlFor="blog-image-file-input"
+                    htmlFor="news-image-file-input"
                     className="block text-xs font-semibold uppercase tracking-wider text-slate-600"
                   >
                     Or Upload Header Image
                   </label>
                   <input
-                    id="blog-image-file-input"
+                    id="news-image-file-input"
                     type="file"
                     accept="image/*"
                     onChange={handleNewsImageFileUpload}
@@ -1687,34 +1687,34 @@ export function CommunityRemoteApp({
               </div>
               <div>
                 <label
-                  htmlFor="blog-excerpt-input"
+                  htmlFor="news-excerpt-input"
                   className="block text-xs font-semibold uppercase tracking-wider text-slate-600"
                 >
                   Short Description
                 </label>
                 <input
-                  id="blog-excerpt-input"
+                  id="news-excerpt-input"
                   type="text"
                   required
-                  value={blogExcerpt}
-                  onChange={(e) => setBlogExcerpt(e.target.value)}
+                  value={newsExcerpt}
+                  onChange={(e) => setNewsExcerpt(e.target.value)}
                   placeholder="A 1-2 sentence description shown below the header image on the news card..."
                   className="mt-1 h-10 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm"
                 />
               </div>
               <div>
                 <label
-                  htmlFor="blog-content-input"
+                  htmlFor="news-content-input"
                   className="block text-xs font-semibold uppercase tracking-wider text-slate-600"
                 >
                   Full News Content
                 </label>
                 <textarea
-                  id="blog-content-input"
+                  id="news-content-input"
                   rows={5}
                   required
-                  value={blogContent}
-                  onChange={(e) => setBlogContent(e.target.value)}
+                  value={newsContent}
+                  onChange={(e) => setNewsContent(e.target.value)}
                   placeholder="Write the full news article content..."
                   className="mt-1 w-full rounded-xl border border-slate-300 bg-white p-3 text-sm"
                 />
@@ -1723,12 +1723,12 @@ export function CommunityRemoteApp({
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={() => setShowBlogComposer(false)}
+                  onClick={() => setShowNewsComposer(false)}
                 >
                   Cancel
                 </Button>
                 <Button type="submit">
-                  {editingBlogId ? 'Save News Changes' : 'Publish News'}
+                  {editingNewsId ? 'Save News Changes' : 'Publish News'}
                 </Button>
               </div>
             </form>
@@ -2201,11 +2201,11 @@ export function CommunityRemoteApp({
             )}
           </Card>
         )
-      ) : selectedBlog ? (
+      ) : selectedArticle ? (
         /* Dedicated Full News Page View (opened when clicking any news card) */
         <article
           data-testid="full-news-page"
-          aria-label={`Full news article: ${selectedBlog.title}`}
+          aria-label={`Full news article: ${selectedArticle.title}`}
           className="space-y-5"
         >
           <div className="flex flex-wrap items-center justify-between gap-3">
@@ -2213,7 +2213,7 @@ export function CommunityRemoteApp({
               type="button"
               variant="outline"
               size="sm"
-              onClick={() => setSelectedBlog(null)}
+              onClick={() => setSelectedArticle(null)}
             >
               <ChevronLeft className="h-4 w-4" aria-hidden="true" />
               Back to News
@@ -2224,7 +2224,7 @@ export function CommunityRemoteApp({
                 <Button
                   size="sm"
                   variant="outline"
-                  onClick={() => openEditBlogComposer(selectedBlog)}
+                  onClick={() => openEditNewsComposer(selectedArticle)}
                 >
                   <Edit3 className="h-3.5 w-3.5" aria-hidden="true" />
                   Edit News
@@ -2232,7 +2232,7 @@ export function CommunityRemoteApp({
                 <Button
                   size="sm"
                   variant="outline"
-                  onClick={() => void handleDeleteBlog(selectedBlog)}
+                  onClick={() => void handleDeleteNews(selectedArticle)}
                 >
                   <Trash2 className="h-3.5 w-3.5 text-rose-600" aria-hidden="true" />
                   Delete News
@@ -2245,17 +2245,17 @@ export function CommunityRemoteApp({
             {/* Full News Header Image */}
             <div className="relative h-64 w-full overflow-hidden bg-slate-900 sm:h-96">
               <img
-                src={selectedBlog.imageUrl || DEFAULT_NEWS_HEADER_IMAGE}
-                alt={selectedBlog.title}
+                src={selectedArticle.imageUrl || DEFAULT_NEWS_HEADER_IMAGE}
+                alt={selectedArticle.title}
                 className="h-full w-full object-cover"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-slate-950/20 to-transparent" />
               <div className="absolute bottom-4 left-4 right-4 flex flex-wrap items-center gap-2 sm:bottom-6 sm:left-6 sm:right-6">
                 <Badge className="bg-primary-600 text-white">Official News</Badge>
                 <Badge variant="secondary" className="bg-white/90 text-slate-900">
-                  {selectedBlog.readTimeMinutes} min read
+                  {selectedArticle.readTimeMinutes} min read
                 </Badge>
-                {selectedBlog.tags.map((tag) => (
+                {selectedArticle.tags.map((tag) => (
                   <Badge
                     key={tag}
                     variant="outline"
@@ -2269,16 +2269,16 @@ export function CommunityRemoteApp({
 
             <CardHeader className="border-b border-slate-100 bg-slate-50/70">
               <CardTitle className="text-2xl font-bold text-slate-900 sm:text-3xl">
-                {selectedBlog.title}
+                {selectedArticle.title}
               </CardTitle>
               <CardDescription className="mt-2 text-base font-medium leading-relaxed text-slate-600">
-                {selectedBlog.excerpt}
+                {selectedArticle.excerpt}
               </CardDescription>
             </CardHeader>
 
             <CardContent className="space-y-6 pt-6">
               <div className="whitespace-pre-line text-sm leading-relaxed text-slate-800 sm:text-base">
-                {selectedBlog.content}
+                {selectedArticle.content}
               </div>
 
               <div className="flex flex-wrap items-center justify-between gap-4 border-y border-slate-100 py-4">
@@ -2287,33 +2287,33 @@ export function CommunityRemoteApp({
                     Published By Admin
                   </p>
                   <UserProfileCard
-                    user={selectedBlog.author}
-                    contextLabel={`News: ${selectedBlog.title}`}
+                    user={selectedArticle.author}
+                    contextLabel={`News: ${selectedArticle.title}`}
                     compact
                   />
                 </div>
 
                 <Button
-                  variant={selectedBlog.isLikedByViewer ? 'default' : 'outline'}
-                  onClick={() => void handleToggleBlogReaction(selectedBlog)}
+                  variant={selectedArticle.isLikedByViewer ? 'default' : 'outline'}
+                  onClick={() => void handleToggleNewsReaction(selectedArticle)}
                 >
                   <Heart
-                    className={`h-4 w-4 ${selectedBlog.isLikedByViewer ? 'fill-current' : ''}`}
+                    className={`h-4 w-4 ${selectedArticle.isLikedByViewer ? 'fill-current' : ''}`}
                     aria-hidden="true"
                   />
-                  {selectedBlog.isLikedByViewer ? 'Liked' : 'Like Article'} (
-                  {selectedBlog.likesCount})
+                  {selectedArticle.isLikedByViewer ? 'Liked' : 'Like Article'} (
+                  {selectedArticle.likesCount})
                 </Button>
               </div>
 
               {/* Comments Section */}
               <div className="space-y-4">
                 <h3 className="text-sm font-semibold uppercase tracking-wider text-slate-600">
-                  Rider Discussion ({selectedBlog.comments?.length ?? selectedBlog.commentsCount})
+                  Rider Discussion ({selectedArticle.comments?.length ?? selectedArticle.commentsCount})
                 </h3>
 
                 <div className="space-y-3">
-                  {(selectedBlog.comments ?? []).map((comment) => (
+                  {(selectedArticle.comments ?? []).map((comment) => (
                     <div
                       key={comment.id}
                       className="rounded-xl border border-slate-200 bg-slate-50/70 p-3.5"
@@ -2332,7 +2332,7 @@ export function CommunityRemoteApp({
                         </div>
                         <MessageUserButton
                           user={comment.author}
-                          contextLabel={`Comment on: ${selectedBlog.title}`}
+                          contextLabel={`Comment on: ${selectedArticle.title}`}
                           size="sm"
                           variant="ghost"
                         />
@@ -2342,13 +2342,13 @@ export function CommunityRemoteApp({
                   ))}
                 </div>
 
-                <form onSubmit={(e) => void handleAddBlogComment(e)} className="flex gap-2">
+                <form onSubmit={(e) => void handleAddNewsComment(e)} className="flex gap-2">
                   <input
                     type="text"
                     value={commentDraft}
                     onChange={(e) => setCommentDraft(e.target.value)}
                     placeholder="Add a technical note or comment on this news article..."
-                    aria-label="Add blog comment"
+                    aria-label="Add news comment"
                     className="h-10 flex-1 rounded-xl border border-slate-300 bg-white px-3 text-sm"
                   />
                   <Button type="submit" size="sm" className="h-10 px-4">
@@ -2361,17 +2361,17 @@ export function CommunityRemoteApp({
         </article>
       ) : (
         <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-          {blogs.map((blog) => (
+          {newsArticles.map((article) => (
               <Card
-                key={blog.id}
+                key={article.id}
                 role="article"
                 tabIndex={0}
-                aria-label={blog.title}
-                onClick={() => void handleOpenBlogReader(blog)}
+                aria-label={article.title}
+                onClick={() => void handleOpenNewsReader(article)}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' || e.key === ' ') {
                     e.preventDefault();
-                    void handleOpenBlogReader(blog);
+                    void handleOpenNewsReader(article);
                   }
                 }}
                 className="group flex cursor-pointer flex-col justify-between overflow-hidden border border-slate-200 transition-all hover:-translate-y-0.5 hover:border-primary-400 hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600"
@@ -2380,14 +2380,14 @@ export function CommunityRemoteApp({
                 <div>
                   <div className="relative h-52 w-full overflow-hidden bg-slate-900">
                     <img
-                      src={blog.imageUrl || DEFAULT_NEWS_HEADER_IMAGE}
-                      alt={blog.title}
+                      src={article.imageUrl || DEFAULT_NEWS_HEADER_IMAGE}
+                      alt={article.title}
                       className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-slate-950/65 via-transparent to-transparent" />
                     <div className="absolute bottom-3 left-3 right-3 flex flex-wrap items-center justify-between gap-2">
                       <div className="flex flex-wrap gap-1.5">
-                        {blog.tags.slice(0, 3).map((tag) => (
+                        {article.tags.slice(0, 3).map((tag) => (
                           <Badge
                             key={tag}
                             variant="secondary"
@@ -2401,7 +2401,7 @@ export function CommunityRemoteApp({
                         variant="outline"
                         className="border-white/40 bg-slate-900/70 text-white"
                       >
-                        {blog.readTimeMinutes} min read
+                        {article.readTimeMinutes} min read
                       </Badge>
                     </div>
                   </div>
@@ -2409,17 +2409,17 @@ export function CommunityRemoteApp({
                   {/* News Headline & Description */}
                   <CardHeader className="pb-4">
                     <CardTitle className="text-xl transition-colors group-hover:text-primary-700">
-                      {blog.title}
+                      {article.title}
                     </CardTitle>
                     <CardDescription className="mt-2 line-clamp-3 text-sm leading-relaxed text-slate-600">
-                      {blog.excerpt}
+                      {article.excerpt}
                     </CardDescription>
                   </CardHeader>
                 </div>
 
                 <CardFooter className="justify-between border-t border-slate-100 bg-slate-50/50 py-3">
                   <span className="text-xs font-medium text-slate-500">
-                    By {blog.author.displayName}
+                    By {article.author.displayName}
                   </span>
                   <span className="inline-flex items-center gap-1 text-xs font-semibold text-primary-700 group-hover:underline">
                     Read Full News →

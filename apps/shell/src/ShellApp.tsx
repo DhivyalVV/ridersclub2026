@@ -123,7 +123,7 @@ function mapApiConversationToThread(item: DirectConversationItem): DirectConvers
 }
 
 export interface RemoteComponentOverrides {
-  Community?: React.ComponentType<{ initialSection?: 'communities' | 'news' | 'blogs' }>;
+  Community?: React.ComponentType<{ initialSection?: 'communities' | 'news' }>;
   Rides?: React.ComponentType;
   Help?: React.ComponentType;
   Mechanics?: React.ComponentType;
@@ -136,7 +136,7 @@ export interface ShellAppProps {
    * Optional override components used in tests for simulating specific remote states or failures.
    */
   CommunityComponentOverride?: React.ComponentType<{
-    initialSection?: 'communities' | 'news' | 'blogs';
+    initialSection?: 'communities' | 'news';
   }>;
   remoteOverrides?: RemoteComponentOverrides;
   initialAuthenticatedUser?: AuthenticatedUserAccount | null;
@@ -1000,14 +1000,6 @@ export function ShellApp({
               />
               <Route
                 path="/news/*"
-                element={renderFederatedModule(
-                  'News',
-                  'http://localhost:5001/remoteEntry.js',
-                  <CommunityComponent initialSection="news" />,
-                )}
-              />
-              <Route
-                path="/blogs/*"
                 element={renderFederatedModule(
                   'News',
                   'http://localhost:5001/remoteEntry.js',

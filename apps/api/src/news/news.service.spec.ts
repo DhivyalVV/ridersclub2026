@@ -1,8 +1,8 @@
 import { ForbiddenException, NotFoundException } from '@nestjs/common';
 import { UserRole } from '@ridersclub/types';
-import { BlogsService } from './blogs.service';
+import { NewsService } from './news.service';
 
-describe('BlogsService', () => {
+describe('NewsService', () => {
   const mockProfilesService = {
     mapUserWithProfileToPublicSummary: jest.fn((user: { id: string; role: string }) => ({
       id: user.id,
@@ -18,9 +18,9 @@ describe('BlogsService', () => {
 
   it('rejects news creation and update when actor is not an ADMIN', async () => {
     const mockPrisma = {
-      blog: {
+      newsArticle: {
         findUnique: jest.fn().mockResolvedValue({
-          id: 'blog-123',
+          id: 'news-123',
           authorId: 'author-owner-1',
           content: 'Original content body with enough words.',
         }),
@@ -29,13 +29,13 @@ describe('BlogsService', () => {
       },
     };
 
-    const service = new BlogsService(
+    const service = new NewsService(
       mockPrisma as never,
       mockProfilesService as never,
     );
 
     await expect(
-      service.createBlog(
+      service.createNews(
         { sub: 'normal-user-1', role: UserRole.USER },
         {
           title: 'Unauthorized News Post',
@@ -46,28 +46,28 @@ describe('BlogsService', () => {
     ).rejects.toBeInstanceOf(ForbiddenException);
 
     await expect(
-      service.updateBlog(
-        'blog-123',
+      service.updateNews(
+        'news-123',
         { sub: 'other-user-2', role: UserRole.USER },
         { title: 'Unauthorized Edit Attempt' },
       ),
     ).rejects.toBeInstanceOf(ForbiddenException);
 
-    expect(mockPrisma.blog.create).not.toHaveBeenCalled();
-    expect(mockPrisma.blog.update).not.toHaveBeenCalled();
+    expect(mockPrisma.newsArticle.create).not.toHaveBeenCalled();
+    expect(mockPrisma.newsArticle.update).not.toHaveBeenCalled();
   });
 
   it('allows ADMIN to create and update news with header imageUrl and recalculates readTimeMinutes', async () => {
     const now = new Date();
     const mockPrisma = {
-      blog: {
+      newsArticle: {
         findUnique: jest.fn().mockResolvedValue({
-          id: 'blog-123',
+          id: 'news-123',
           authorId: 'admin-owner-1',
           content: 'Original content.',
         }),
         update: jest.fn().mockResolvedValue({
-          id: 'blog-123',
+          id: 'news-123',
           slug: 'high-altitude-braking',
           title: 'Updated Title',
           excerpt: 'Updated excerpt for braking guide.',
@@ -89,13 +89,13 @@ describe('BlogsService', () => {
       },
     };
 
-    const service = new BlogsService(
+    const service = new NewsService(
       mockPrisma as never,
       mockProfilesService as never,
     );
 
-    const updated = await service.updateBlog(
-      'blog-123',
+    const updated = await service.updateNews(
+      'news-123',
       { sub: 'admin-owner-1', role: UserRole.ADMIN },
       {
         title: 'Updated Title',
@@ -109,12 +109,12 @@ describe('BlogsService', () => {
     expect(updated.commentsCount).toBe(2);
   });
 
-  it('toggles blog reaction on and off accurately', async () => {
+  it('toggles news reaction on and off accurately', async () => {
     const mockPrisma = {
-      blog: {
-        findUnique: jest.fn().mockResolvedValue({ id: 'blog-123' }),
+      newsArticle: {
+        findUnique: jest.fn().mockResolvedValue({ id: 'news-123' }),
       },
-      blogReaction: {
+      newsReaction: {
         findUnique: jest.fn().mockResolvedValueOnce(null).mockResolvedValueOnce({ id: 'react-1' }),
         create: jest.fn().mockResolvedValue({ id: 'react-1' }),
         delete: jest.fn().mockResolvedValue({ id: 'react-1' }),
@@ -122,33 +122,32 @@ describe('BlogsService', () => {
       },
     };
 
-    const service = new BlogsService(
+    const service = new NewsService(
       mockPrisma as never,
       mockProfilesService as never,
     );
 
-    const firstToggle = await service.toggleReaction('blog-123', 'user-1');
-    expect(firstToggle).toEqual({ blogId: 'blog-123', liked: true, likesCount: 1 });
+    const firstToggle = await service.toggleReaction('news-123', 'user-1');
+    expect(firstToggle).toEqual({ newsId: 'news-123', liked: true, likesCount: 1 });
 
-    const secondToggle = await service.toggleReaction('blog-123', 'user-1');
-    expect(secondToggle).toEqual({ blogId: 'blog-123', liked: false, likesCount: 0 });
+    const secondToggle = await service.toggleReaction('news-123', 'user-1');
+    expect(secondToggle).toEqual({ newsId: 'news-123', liked: false, likesCount: 0 });
   });
 
-  it('throws NotFoundException when adding a comment to a non-existent blog', async () => {
+  it('throws NotFoundException when adding a comment to a non-existent news article', async () => {
     const mockPrisma = {
-      blog: {
+      newsArticle: {
         findUnique: jest.fn().mockResolvedValue(null),
       },
     };
 
-    const service = new BlogsService(
+    const service = new NewsService(
       mockPrisma as never,
       mockProfilesService as never,
     );
 
     await expect(
-      service.addComment('missing-blog', 'user-1', { body: 'Great writeup!' }),
+      service.addComment('missing-news', 'user-1', { body: 'Great writeup!' }),
     ).rejects.toBeInstanceOf(NotFoundException);
   });
 });
-

@@ -1,6 +1,6 @@
 import * as React from 'react';
 export interface CommunityRemoteAppProps {
-    initialSection?: 'communities' | 'news' | 'blogs';
+    initialSection?: 'communities' | 'news';
 }
 export declare function CommunityRemoteApp({ initialSection, }: CommunityRemoteAppProps): React.JSX.Element;
 export default CommunityRemoteApp;

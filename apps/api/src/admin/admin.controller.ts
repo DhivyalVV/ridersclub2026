@@ -46,7 +46,7 @@ export class AdminController {
   @Post('reports')
   @ApiOperation({
     summary:
-      'Submit a content or safety report against a blog, community, user, help request, mechanic, or listing',
+      'Submit a content or safety report against a news article, community, user, help request, mechanic, or listing',
   })
   async createReport(
     @CurrentUser() user: AuthUserOrPayload,

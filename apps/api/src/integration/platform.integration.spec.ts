@@ -10,7 +10,7 @@ import {
 import { AdminController } from '../admin/admin.controller';
 import { AppModule } from '../app.module';
 import { AuthController } from '../auth/auth.controller';
-import { BlogsController } from '../blogs/blogs.controller';
+import { NewsController } from '../news/news.controller';
 import { CommunitiesController } from '../communities/communities.controller';
 import { GarageController } from '../garage/garage.controller';
 import { HealthController } from '../health/health.controller';
@@ -209,7 +209,7 @@ describe('RidersClub NestJS Modular Monolith Integration Suite (Phase 14)', () =
     expect(moduleRef.get(HealthController)).toBeDefined();
     expect(moduleRef.get(AuthController)).toBeDefined();
     expect(moduleRef.get(ProfilesController)).toBeDefined();
-    expect(moduleRef.get(BlogsController)).toBeDefined();
+    expect(moduleRef.get(NewsController)).toBeDefined();
     expect(moduleRef.get(CommunitiesController)).toBeDefined();
     expect(moduleRef.get(MessagingController)).toBeDefined();
     expect(moduleRef.get(RidesController)).toBeDefined();

@@ -9,7 +9,7 @@ afterEach(() => {
   cleanup();
 });
 
-describe('CommunityRemoteApp federated remote (Phase 6 Communities, Chat & Blogs)', () => {
+describe('CommunityRemoteApp federated remote (Phase 6 Communities, Chat & News)', () => {
   it('renders Communities and News as separate dedicated views without an internal tab switcher', () => {
     const { unmount } = render(<CommunityRemoteApp initialSection="communities" />);
 
@@ -268,7 +268,7 @@ describe('CommunityRemoteApp federated remote (Phase 6 Communities, Chat & Blogs
     fireEvent.click(likeArticleBtn);
     expect(screen.getByRole('button', { name: /Liked \(25\)/i })).toBeTruthy();
 
-    const commentInput = screen.getByLabelText('Add blog comment');
+    const commentInput = screen.getByLabelText('Add news comment');
     fireEvent.change(commentInput, {
       target: { value: 'Verified 2.5mm clutch free-play before climbing Kunzum Pass.' },
     });

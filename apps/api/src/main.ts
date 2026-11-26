@@ -40,7 +40,7 @@ async function bootstrap(): Promise<void> {
   const swaggerConfig = new DocumentBuilder()
     .setTitle('RidersClub Enterprise API')
     .setDescription(
-      'REST API contracts for RidersClub (Auth, Profiles, Blogs, Communities, Chat, Rides, Help, Mechanics, Garage, Marketplace, Admin).',
+      'REST API contracts for RidersClub (Auth, Profiles, News, Communities, Chat, Rides, Help, Mechanics, Garage, Marketplace, Admin).',
     )
     .setVersion('0.1.0')
     .addBearerAuth()
